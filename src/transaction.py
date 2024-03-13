@@ -1,18 +1,6 @@
-# from collections import OrderedDict
-# import binascii
-# import json
-
-# import Crypto
-# import Crypto.Random
-# from Crypto.Hash import SHA256
-# from Crypto.PublicKey import RSA
-# from Crypto.Signature import pss
-
-# import requests
-# from flask import Flask, jsonify, request, render_template
-
-# from transaction_output import TransactionOutput
-
+import ecdsa
+import hashlib
+from blockchain import Blockchain
 
 class Transaction:
 
@@ -33,11 +21,25 @@ class Transaction:
     def __eq__(self, other):
         return self.transaction_id == other.transaction_id
 
-    def sign_transaction(self, private_key):
-        pass
+    def sign_transaction(self, private_key : str):
+        transaction_data = "{}{}{}{}{}{}".format(self.sender_address, self.receiver_address, self.type_of_transaction, self.amount, self.message, self.nonce)
+        transaction_hash = hashlib.sha256(transaction_data.encode()).digest()
+        signing_key = ecdsa.SigningKey.from_string(private_key, curve=ecdsa.SECP256k1)
+        self.signature = signing_key.sign(transaction_hash)
 
     def verify_signature(self):
-        pass
+        transaction_data = "{}{}{}{}{}{}".format(self.sender_address, self.receiver_address, self.type_of_transaction, self.amount, self.message, self.nonce)
+        transaction_hash = hashlib.sha256(transaction_data.encode()).digest()
+        verifying_key = ecdsa.VerifyingKey.from_string(self.sender_address, curve=ecdsa.SECP256k1)
+        try:
+            return verifying_key.verify(self.signature, transaction_hash)
+        except ecdsa.BadSignatureError:
+            return False
     
-    def validate_transaction(self):
-        pass
+    def validate_transaction(self, blockchain : Blockchain):
+
+        if not self.verify_signature() : 
+            return False
+        if not blockchain.balance_check() :
+            return False
+        return True
