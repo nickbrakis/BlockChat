@@ -14,7 +14,10 @@ class Blockchain:
         self.blocks.append(block)
 
     def validate_chain(self):
-        pass
+        for i in range(1, len(self.blocks)):
+            if self.blocks[i].validate_block(self) == False:
+                return False
+        return True
 
     def set_validator(self, address : str, stake : int):
         self.validators[address] = stake
@@ -22,5 +25,5 @@ class Blockchain:
     def last_block(self) -> Block:
         return self.blocks[-1]
     
-    def balance_check():
+    def balance_check(sender_address : str, amount : int) -> bool:
         pass
