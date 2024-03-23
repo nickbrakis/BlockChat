@@ -1,17 +1,17 @@
 import ecdsa
 import hashlib
-from blockchain import Blockchain
-
+from wallet import Wallet
+from transaction_pool import TransactionPool
 class Transaction:
 
-    def __init__(self, sender_address, receiver_address, type_of_transaction, amount, message, nonce, transaction_id=None, signature=None):
+    def __init__(self, sender_address, receiver_address, type_of_transaction, amount, message, wallet : Wallet, transaction_id=None, signature=None):
         """Inits a Transaction"""
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.type_of_transaction = type_of_transaction
         self.amount = amount
         self.message = message
-        self.nonce = nonce
+        self.nonce = wallet.get_nonce()
         self.transaction_id = transaction_id
         self.signature = signature
 
@@ -36,9 +36,9 @@ class Transaction:
         except ecdsa.BadSignatureError:
             return False
     
-    def validate_transaction(self, blockchain : Blockchain):
+    def validate_transaction(self, t_pool: TransactionPool):
         if not self.verify_signature() : 
             return False
-        if not blockchain.balance_check() :
+        if not t_pool.balance_check() :
             return False
         return True

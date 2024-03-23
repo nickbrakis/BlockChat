@@ -3,17 +3,25 @@ import hashlib
 import time
 from blockchain import Blockchain
 from transaction import Transaction
-from wallet import Wallet
+
+def index_block():
+    i = 0
+    while True:
+        yield i
+        i += 1
 
 class Block:
-    def __init__(self, previous_hash : str, capacity : int = 10):
-        self.previous_hash = previous_hash
+    def __init__(self, blockchain: Blockchain, capacity : int = 10):
+        self.previous_hash = blockchain.last_block().current_hash
         self.timestamp = time()
-        self.current_hash : str = None
-        self.index : int = None
-        self.transactions : list[Transaction] = list()
-        self.validator : str = None
+        self.index : int = index_block()
         self.capacity : int = capacity
+        random.seed(self.previous_hash)
+        validators = [validator for validator, stake in blockchain.validators.items() for _ in range(stake)]
+        self.validator : str = random.choice(validators)
+
+        self.transactions : list[Transaction] = list()
+        self.current_hash : str = None
 
 
     def calculate_hash(self) -> str:
@@ -34,16 +42,7 @@ class Block:
 
         if self.previous_hash != blockchain.last_block().current_hash:
             return False
-        return True      
-
-    def mint_block(self):
-        pass
-    
-    def find_validator(self, blockchain : Blockchain) -> str:
-        random.seed(blockchain.last_block().current_hash)
-        validators = [validator for validator, stake in blockchain.validators.items() for _ in range(stake)]
-        return random.choice(validators)
-    
+        return True         
 
     def add_transaction(self, transaction : Transaction):
         self.transactions.append(transaction)

@@ -26,5 +26,4 @@ class Blockchain:
     def last_block(self) -> Block:
         return self.blocks[-1]
     
-    def balance_check(self, sender_address : str, amount : int) -> bool:
-        return self.validators[sender_address].get_balance() >= amount
+

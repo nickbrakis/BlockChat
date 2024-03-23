@@ -7,21 +7,25 @@ class Wallet:
         self.balance = balance
         self.stake = stake
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string representation of a Wallet object."""
         return str(self.__class__) + ": " + str(self.__dict__)
 
-    def get_balance(self):
+    def get_balance(self) -> int:
         return self.balance
 
-    def set_stake(self, stake_amount):
+    def set_stake(self, stake_amount: int) -> None:
         self.stake = stake_amount
 
-    def get_address(self):
+    def get_address(self) -> str:
         return self.public_key
     
-    def get_private_key(self):
+    def get_private_key(self) -> str:
         if self.private_key == -1:
             raise Exception("Private key is not set, wallet is public!")
         return self.private_key
 
+    def get_nonce(self):
+        while True:
+            yield self.nonce
+            self.nonce += 1
