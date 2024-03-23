@@ -6,14 +6,25 @@ import argparse
 from wallet import Wallet
 from blockchain import Blockchain
 from transaction import Transaction
+from logic import Node
+
 
 app = FastAPI()
 
+# initialize a blockchain and a node
 blockchain = Blockchain()
+node = Node()
 
-# client/api
+############### client/api ######################
+
 @app.post("/transactions/new")
-async def create_transaction(transaction: Transaction):
-    index = blockchain.new_transaction(transaction.sender, transaction.recipient, transaction.amount)
-    return {"message": f"Transaction will be added to Block {index}"}
+async def create_transaction(receiver_address : str, amount : int):
+    
+    # TO DO : 
+    # maybe some checks??
 
+
+    # 1. create a tranasaction
+    # maybe we change logic to node 
+    transaction = node.create_transaction()
+    # 2. 
