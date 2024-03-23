@@ -6,16 +6,14 @@ from transaction import Transaction
 from wallet import Wallet
 
 class Block:
-    def __init__(self, previous_hash : str):
-        """
-        Initialize a block
-        """
+    def __init__(self, previous_hash : str, capacity : int = 10):
         self.previous_hash = previous_hash
         self.timestamp = time()
         self.current_hash : str = None
         self.index : int = None
         self.transactions : list[Transaction] = list()
         self.validator : str = None
+        self.capacity : int = capacity
 
 
     def calculate_hash(self) -> str:
