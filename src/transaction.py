@@ -37,7 +37,6 @@ class Transaction:
             return False
     
     def validate_transaction(self, blockchain : Blockchain):
-
         if not self.verify_signature() : 
             return False
         if not blockchain.balance_check() :

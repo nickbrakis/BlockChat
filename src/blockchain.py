@@ -1,11 +1,12 @@
 from block import Block
+from wallet import Wallet
 
 
 class Blockchain:
 
     def __init__(self):
         self.blocks : list[Block] = list()
-        self.validators : dict[str,int] = dict()
+        self.validators : dict[str, Wallet] = dict()
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -19,11 +20,11 @@ class Blockchain:
                 return False
         return True
 
-    def set_validator(self, address : str, stake : int):
-        self.validators[address] = stake
+    def set_validator(self, address : str, wallet : Wallet):
+        self.validators[address] = wallet
 
     def last_block(self) -> Block:
         return self.blocks[-1]
     
-    def balance_check(sender_address : str, amount : int) -> bool:
-        pass
+    def balance_check(self, sender_address : str, amount : int) -> bool:
+        return self.validators[sender_address].get_balance() >= amount
