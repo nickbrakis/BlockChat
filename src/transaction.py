@@ -2,18 +2,23 @@ import ecdsa
 import hashlib
 from wallet import Wallet
 from transaction_pool import TransactionPool
-class Transaction:
+from pydantic import BaseModel
 
-    def __init__(self, sender_address, receiver_address, type_of_transaction, amount, message, wallet : Wallet, transaction_id=None, signature=None):
+
+
+class Transaction(BaseModel):
+    def __init__(self, sender_address, receiver_address, type_of_transaction, amount, message, nonce):
         """Inits a Transaction"""
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.type_of_transaction = type_of_transaction
         self.amount = amount
         self.message = message
-        self.nonce = wallet.get_nonce()
-        self.transaction_id = transaction_id
-        self.signature = signature
+        self.nonce = nonce
+        self.signature = None
+
+        transaction_data = "{}{}{}{}{}{}".format(self.sender_address, self.receiver_address, self.type_of_transaction, self.amount, self.message, self.nonce)
+        self.transaction_id = hashlib.sha256(transaction_data.encode()).hexdigest()
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -42,3 +47,4 @@ class Transaction:
         if not t_pool.balance_check() :
             return False
         return True
+

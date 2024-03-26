@@ -3,6 +3,7 @@ import hashlib
 import time
 from blockchain import Blockchain
 from transaction import Transaction
+from pydantic import BaseModel
 
 def index_block():
     i = 0
@@ -10,7 +11,7 @@ def index_block():
         yield i
         i += 1
 
-class Block:
+class Block(BaseModel):
     def __init__(self, blockchain: Blockchain, capacity : int = 10):
         self.previous_hash = blockchain.last_block().current_hash
         self.timestamp = time()
@@ -46,3 +47,18 @@ class Block:
 
     def add_transaction(self, transaction : Transaction):
         self.transactions.append(transaction)
+
+    def to_json(self):
+        transactions_list = self.transactions
+        validator_id = self.validator
+        
+        transactions = []
+        for transaction in transactions_list:
+            transactions.append(
+                {
+                    "sender_id": transaction.sender_address,
+                    "receiver_id": transaction.receiver_address,
+                    "amount": transaction.amount
+                }
+            )
+        transactions.append({"validator" : self.validator_id})
