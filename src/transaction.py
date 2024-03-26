@@ -41,10 +41,10 @@ class Transaction(BaseModel):
         except ecdsa.BadSignatureError:
             return False
     
-    def validate_transaction(self, t_pool: TransactionPool):
+    def validate_transaction(self, wallet: Wallet):
         if not self.verify_signature() : 
-            return False
-        if not t_pool.balance_check() :
-            return False
-        return True
+            return "Invalid Signature", False
+        if not wallet.pending_balance_check() :
+            return "Failed balance check", False
+        return None, True
 

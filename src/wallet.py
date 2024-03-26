@@ -6,6 +6,8 @@ class Wallet:
         self.nonce = nonce
         self.balance = balance
         self.stake = stake
+        self.pending_balance = balance
+
 
     def __str__(self) -> str:
         """Returns a string representation of a Wallet object."""
@@ -29,3 +31,6 @@ class Wallet:
         while True:
             yield self.nonce
             self.nonce += 1
+
+    def pending_balance_check(self, amount: int):
+        return self.pending_balance - self.stake >= amount
