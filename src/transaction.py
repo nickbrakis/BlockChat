@@ -69,4 +69,8 @@ class Transaction(BaseModel):
             return "Invalid Signature", False
         if not wallet.pending_balance_check():
             return "Failed balance check", False
+        if self.nonce <= wallet.nonce:
+            return "Invalid nonce", False
+        wallet.nonce += 1
+        wallet.pending_balance -= self.amount
         return None, True

@@ -22,10 +22,5 @@ class Wallet:
             raise ValueError("Private key is not set, wallet is public!")
         return self.private_key
 
-    def get_nonce(self):
-        while True:
-            yield self.nonce
-            self.nonce += 1
-
     def pending_balance_check(self, amount: int):
         return self.pending_balance - self.stake >= amount

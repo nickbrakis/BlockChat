@@ -3,13 +3,14 @@ from wallet import Wallet
 from block import Block
 from transaction import Transaction
 from transaction_pool import TransactionPool
-
+from blockchain import Blockchain
 
 class Node:
     def __init__(self):
         self.address: str = None
         self.nodes: dict[str, Wallet] = dict()
         self.transaction_pool: TransactionPool = TransactionPool()
+        self.blockchain: Blockchain = Blockchain()
 
     def add_node(self, address: str, wallet: Wallet):
         '''Adds a node to the network.'''
@@ -24,8 +25,25 @@ class Node:
     def create_block(self):
         pass
 
+
     def receive_block(self, block: Block) -> str:
-        return f"Block {block.current_hash} received."
+        last_hash = self.blockchain.last_block().current_hash
+        ok = block.validate_block(last_hash, self.nodes)
+        if not ok:
+            return "Block is invalid."
+        # TO DO : make validators rewards
+        self.update_balances(block)
+        self.blockchain.add_block(block)
+        return f"Block {block.current_hash} added to blockchain."
+    
+    def update_balances(self, block: Block):
+        for transaction in block.transactions:
+            sender = self.nodes[transaction.sender_address]
+            receiver = self.nodes[transaction.receiver_address]
+            sender.balance -= transaction.amount
+            receiver.balance += transaction.amount
+        for wallet in self.nodes.values():
+            wallet.pending_balance = wallet.balance
 
     def create_transaction(self, receiver_address: str, amount: int, message: str):
         if receiver_address not in self.nodes:
@@ -33,7 +51,7 @@ class Node:
         if self.nodes[self.address].pending_balance_check(amount):
             return "Not enough coins"
 
-        nonce = self.nodes[self.address].get_nonce()
+        nonce = self.nodes[self.address].nonce
         transaction_type = "message" if message else "coins"
         transaction = Transaction(sender_address=self.address,
                                   receiver_address=receiver_address,
