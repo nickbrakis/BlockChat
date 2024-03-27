@@ -1,6 +1,7 @@
+# pylint: disable=missing-docstring
 from transaction import Transaction
-from blockchain import Blockchain
 from wallet import Wallet
+
 
 class TransactionPool:
     def __init__(self):
@@ -12,9 +13,9 @@ class TransactionPool:
         wallet.nonce += 1
         self.pending_transactions.append(transaction)
         return "Transaction Accepted", True
-    
-    def remove_transaction(self, transaction : Transaction):
+
+    def remove_transaction(self, transaction: Transaction):
         self.pending_transactions.remove(transaction)
-    
+
     def get_pending_transactions(self):
         return self.pending_transactions

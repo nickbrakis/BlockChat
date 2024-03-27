@@ -1,9 +1,12 @@
+# pylint: disable=missing-docstring
 import random
 import hashlib
 import time
+from pydantic import BaseModel
 from blockchain import Blockchain
 from transaction import Transaction
-from pydantic import BaseModel
+from wallet import Wallet
+
 
 def index_block():
     i = 0
@@ -11,31 +14,36 @@ def index_block():
         yield i
         i += 1
 
+
 class Block(BaseModel):
-    def __init__(self, blockchain: Blockchain, capacity : int = 10):
-        self.previous_hash = blockchain.last_block().current_hash
-        self.timestamp = time()
-        self.index : int = index_block()
-        self.capacity : int = capacity
+    def __init__(self, previous_hash: str, validators: dict[str, Wallet], capacity: int = 10):
+        super().__init__()
+        self.previous_hash: str = previous_hash
+        self.capacity: int = capacity
+
         random.seed(self.previous_hash)
-        validators = [validator for validator, stake in blockchain.validators.items() for _ in range(stake)]
-        self.validator : str = random.choice(validators)
+        validator_bag = [
+            v for v, wallet in validators for _ in range(wallet.stake)]
+        self.validator: str = random.choice(validator_bag)
 
-        self.transactions : list[Transaction] = list()
-        self.current_hash : str = None
-
+        self.transactions: list[Transaction] = list()
+        self.timestamp: int = int(time.time())
+        self.index: int = index_block()
+        self.current_hash: str = None
 
     def calculate_hash(self) -> str:
-        block_string = "{}{}{}{}".format(self.previous_hash, self.timestamp, self.transactions, self.validator).encode()
+        block_string = "{}{}{}{}".format(self.previous_hash,
+                                         self.timestamp,
+                                         self.transactions,
+                                         self.validator).encode()
         return hashlib.sha256(block_string).hexdigest()
-    
 
-    def validate_block(self, blockchain : Blockchain) -> bool:
+    def validate_block(self, blockchain: Blockchain) -> bool:
         if self.validator != self.find_validator(blockchain):
             return False
 
         for transaction in self.transactions:
-            if not transaction.validate():
+            if not transaction.validate_transaction():
                 return False
 
         if self.current_hash != self.calculate_hash():
@@ -43,15 +51,15 @@ class Block(BaseModel):
 
         if self.previous_hash != blockchain.last_block().current_hash:
             return False
-        return True         
+        return True
 
-    def add_transaction(self, transaction : Transaction):
+    def add_transaction(self, transaction: Transaction) -> None:
         self.transactions.append(transaction)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         transactions_list = self.transactions
         validator_id = self.validator
-        
+
         transactions = []
         for transaction in transactions_list:
             transactions.append(
@@ -61,4 +69,4 @@ class Block(BaseModel):
                     "amount": transaction.amount
                 }
             )
-        transactions.append({"validator" : self.validator_id})
+        transactions.append({"validator": validator_id})
