@@ -3,7 +3,7 @@ from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from blockchain import Blockchain
 from transaction import Transaction
-from logic import Node
+from node import Node
 from block import Block
 
 app = FastAPI()

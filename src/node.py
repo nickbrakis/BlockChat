@@ -6,9 +6,6 @@ from transaction_pool import TransactionPool
 
 
 class Node:
-    '''A node in the blockchain network. It can create transactions, receive transactions,
-    broadcast transactions, view the last block, get the balance, and set the stake amount.'''
-
     def __init__(self):
         self.address: str = None
         self.nodes: dict[str, Wallet] = dict()
