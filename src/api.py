@@ -50,3 +50,8 @@ async def receive_transaction(transaction: Transaction):
 async def receive_block(block: Block):
     msg = node.receive_block(block)
     return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
+
+
+@app.post("/receive_pair")
+async def receive_pair(public_key: str, id: int,  ip: str, port: int):
+    pass
