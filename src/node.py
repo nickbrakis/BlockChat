@@ -5,6 +5,7 @@ from transaction import Transaction
 from transaction_pool import TransactionPool
 from blockchain import Blockchain
 
+
 class Node:
     def __init__(self):
         self.address: str = None
@@ -25,20 +26,27 @@ class Node:
     def create_block(self):
         pass
 
-
     def receive_block(self, block: Block) -> str:
         last_hash = self.blockchain.last_block().current_hash
         ok = block.validate_block(last_hash, self.nodes)
         if not ok:
             return "Block is invalid."
         # TO DO : make validators rewards
-        self.update_balances(block)
+        self.update_wallets(block)
         self.blockchain.add_block(block)
         return f"Block {block.current_hash} added to blockchain."
-    
-    def update_balances(self, block: Block):
+
+    def update_wallets(self, block: Block):
         for transaction in block.transactions:
             sender = self.nodes[transaction.sender_address]
+            # to prevent double spending, catch up to transaction nonce
+            if sender.nonce < transaction.nonce:
+                sender.nonce = transaction.nonce
+
+            if transaction.receiver_address == "0":
+                sender.stake = transaction.amount
+                continue
+
             receiver = self.nodes[transaction.receiver_address]
             sender.balance -= transaction.amount
             receiver.balance += transaction.amount
@@ -48,8 +56,16 @@ class Node:
     def create_transaction(self, receiver_address: str, amount: int, message: str):
         if receiver_address not in self.nodes:
             return "Invalid receiver address"
-        if self.nodes[self.address].pending_balance_check(amount):
-            return "Not enough coins"
+
+        wallet = self.nodes[self.address]
+        if receiver_address == "0":
+            if not wallet.stake_check(amount):
+                return "Failed stake check"
+            else:
+                return None, True
+        else:
+            if not wallet.pending_balance_check(amount):
+                return "Failed balance check"
 
         nonce = self.nodes[self.address].nonce
         transaction_type = "message" if message else "coins"
@@ -92,12 +108,11 @@ class Node:
         pass
 
     def view_block(self) -> Block:
-        '''Returns the last block of the blockchain'''
-        pass
+        return self.blockchain.last_block()
 
     def get_balance(self) -> int:
-        '''Returns the balance of the current node'''
-        return 0
+        return self.nodes[self.address].balance
 
     def set_stake(self, amount: int) -> str:
+        self.nodes[self.address].stake = amount
         return f"Stake set to {amount} successfully."

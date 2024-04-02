@@ -67,8 +67,15 @@ class Transaction(BaseModel):
     def validate_transaction(self, wallet: Wallet) -> tuple[str, bool]:
         if not self.verify_signature():
             return "Invalid Signature", False
-        if not wallet.pending_balance_check():
-            return "Failed balance check", False
+        if self.receiver_address == "0":
+            if not wallet.stake_check(self.amount):
+                return "Failed stake check", False
+            else:
+                wallet.nonce += 1
+                return None, True
+        else:
+            if not wallet.pending_balance_check():
+                return "Failed balance check", False
         if self.nonce <= wallet.nonce:
             return "Invalid nonce", False
         wallet.nonce += 1

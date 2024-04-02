@@ -24,3 +24,6 @@ class Wallet:
 
     def pending_balance_check(self, amount: int):
         return self.pending_balance - self.stake >= amount
+
+    def stake_check(self, stake_amount: int):
+        return self.pending_balance >= stake_amount
