@@ -12,6 +12,7 @@ class Node:
         self.nodes: dict[str, Wallet] = dict()
         self.transaction_pool: TransactionPool = TransactionPool()
         self.blockchain: Blockchain = Blockchain()
+        self.id = None
 
     def add_node(self, address: str, wallet: Wallet):
         '''Adds a node to the network.'''
@@ -116,3 +117,15 @@ class Node:
     def set_stake(self, amount: int) -> str:
         self.nodes[self.address].stake = amount
         return f"Stake set to {amount} successfully."
+    
+    def create_gen_block(self) :
+        gen_block = Block(previous_hash=1, validators=None, capacity=1) 
+        gen_transaction = Transaction(sender_address=self.address,
+                                      receiver_address=self.address,
+                                      type_of_transaction="coins",
+                                      amount=5000,
+                                      message="",
+                                      nonce=self.nodes[self.address].nonce)
+        self.nodes[self.address].nonce += 1
+        gen_block.add_transaction(gen_transaction)
+        self.blockchain.add_block(gen_block)

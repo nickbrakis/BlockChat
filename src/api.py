@@ -5,12 +5,15 @@ from blockchain import Blockchain
 from transaction import Transaction
 from node import Node
 from block import Block
+from broadcaster import Broadcaster
 
 app = FastAPI()
 
 # initialize a blockchain and a node
 blockchain = Blockchain()
 node = Node()
+broadcaster = Broadcaster()
+
 
 
 ############### client/api ######################
@@ -55,3 +58,8 @@ async def receive_block(block: Block):
 @app.post("/receive_pair")
 async def receive_pair(public_key: str, id: int,  ip: str, port: int):
     pass
+
+@app.post("/get_id")
+async def get_id(public_key: str, ip: str, port: int):
+    pass
+
