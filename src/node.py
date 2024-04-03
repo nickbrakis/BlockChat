@@ -134,10 +134,29 @@ class Node:
                                       nonce=self.nodes[self.address].nonce)
         self.nodes[self.address].nonce += 1
         gen_block.add_transaction(gen_transaction)
-        self.blockchain.add_block(gen_block)
+        return gen_block
 
     def get_next_node_id(self):
         idx = 1
         while True:
             yield idx
             idx += 1
+
+    def bootstrap(self):
+        self.broadcaster.broadcast_mapping()
+        gen_block = self.create_gen_block()
+        self.blockchain.add_block(gen_block)
+        self.broadcast_blockchain(self.blockchain)
+        # transaction for each node tranferring 1000 coins
+        for node in self.nodes:
+            if self.address == node:
+                continue
+            transaction = Transaction(sender_address=self.address,
+                                      receiver_address=node,
+                                      type_of_transaction="coins",
+                                      amount=1000,
+                                      message="",
+                                      nonce=self.nodes[self.address].nonce)
+            self.nodes[self.address].nonce += 1
+            self.receive_transaction(transaction)
+            self.broadcast_transaction(transaction)

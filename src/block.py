@@ -35,10 +35,11 @@ class Block(BaseModel):
     def validate_block(self, last_hash: str, validators: dict[str, Wallet]) -> bool:
         if self.validator != self.find_validator(last_hash, validators):
             return False
-        pending_balances = [(address, wallet.pending_balance) for address, wallet in validators.items()]
+        pending_balances = [(address, wallet.pending_balance)
+                            for address, wallet in validators.items()]
         for wallet in validators.values():
             wallet.pending_balance = wallet.balance
-            
+
         for transaction in self.transactions:
             if not transaction.validate_transaction():
                 self.reset_pending(pending_balances, validators)
@@ -52,7 +53,7 @@ class Block(BaseModel):
             self.reset_pending(pending_balances, validators)
             return False
         return True
-    
+
     def reset_pending(self, pending_balances: list[tuple[str, int]], validators: dict[str, Wallet]) -> None:
         for address, balance in pending_balances:
             validators[address].pending_balance = balance
@@ -79,4 +80,6 @@ class Block(BaseModel):
         random.seed(last_hash)
         validator_bag = [
             v for v, wallet in validators for _ in range(wallet.stake)]
+        if validator_bag.empty():
+            return random.choice(list(validators.keys()))
         return random.choice(validator_bag)

@@ -11,7 +11,7 @@ import os
 
 app = FastAPI()
 node = Node()
-i_am_bootstrap = False
+ok_idx = 0
 
 
 @app.on_event("startup")
@@ -23,13 +23,11 @@ def startup_event():
     wallet = node.generate_private_wallet()
     if bootstrap_ip == ip and bootstrap_port == port:
         node_id = 0
-        global i_am_bootstrap
-        i_am_bootstrap = True
     else:
         # get node id from bootstrap node
         url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
         response = requests.post(
-            url, json={"public_key": wallet.public_key, "ip": ip, "port": port})
+            url, json={"public_key": wallet.public_key, "ip": ip, "port": port}, timeout=10)
         node_id = response.json()["node_id"]
     node.add_node(node_id, ip, port, wallet)
 
@@ -90,3 +88,11 @@ def get_id(public_key: str, ip: str, port: int):
     node_id = node.get_next_node_id()
     node.add_node(node_id, public_key, ip, port)
     return JSONResponse({"node_id": node_id}, status_code=status.HTTP_200_OK)
+
+
+@app.post("/ok")
+def ok():
+    global ok_idx
+    ok_idx += 1
+    if ok_idx == 4:
+        node.bootstrap()
