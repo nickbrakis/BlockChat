@@ -9,14 +9,15 @@ class Transaction(BaseModel):
     def __init__(self, sender_address: str,
                  receiver_address: str,
                  type_of_transaction: str,
-                 amount: int,
+                 amount: float,
                  message: str,
                  nonce: int):
         super().__init__()
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.type_of_transaction = type_of_transaction
-        self.amount = amount
+        self.fee = amount * 0.03
+        self.amount = amount + self.fee
         self.message = message
         self.nonce = nonce
         self.signature = None
@@ -46,7 +47,7 @@ class Transaction(BaseModel):
 
         transaction_hash = hashlib.sha256(transaction_data.encode()).digest()
         signing_key = ecdsa.SigningKey.from_string(
-            private_key, curve=ecdsa.SECP256k1)
+            bytes.fromhex(private_key), curve=ecdsa.SECP256k1)
         self.signature = signing_key.sign(transaction_hash)
 
     def verify_signature(self):

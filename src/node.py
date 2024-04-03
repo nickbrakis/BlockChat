@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
+import ecdsa
 from wallet import Wallet
 from block import Block
 from transaction import Transaction
 from transaction_pool import TransactionPool
 from blockchain import Blockchain
+from broadcaster import Broadcaster
 
 
 class Node:
@@ -13,48 +15,56 @@ class Node:
         self.transaction_pool: TransactionPool = TransactionPool()
         self.blockchain: Blockchain = Blockchain()
         self.id = None
+        self.broadcaster = Broadcaster()
 
-    def add_node(self, address: str, wallet: Wallet):
+    def generate_private_wallet(self) -> Wallet:
+        private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
+        public_key_str = private_key.get_verifying_key().to_string().hex()
+        private_key_str = private_key.to_string().hex()
+        return Wallet(public_key_str, private_key_str)
+
+    def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
         '''Adds a node to the network.'''
-        self.nodes[address] = wallet
+        public_key = wallet.public_key
+        self.broadcaster.add_node(node_id, public_key, ip, port)
+        self.nodes[public_key] = wallet
 
-    def bootstrap(self):
-        pass
+    def broadcast_block(self, block: Block):
+        self.broadcaster.broadcast_block(block)
 
-    def broadcast_block(self):
-        pass
+    def broadcast_transaction(self, transaction: Transaction):
+        self.broadcaster.broadcast_transaction(transaction)
 
-    def create_block(self):
-        pass
+    def broadcast_blockchain(self, blockchain: Blockchain):
+        self.broadcaster.broadcast_blockchain(blockchain)
 
     def receive_block(self, block: Block) -> str:
         last_hash = self.blockchain.last_block().current_hash
         ok = block.validate_block(last_hash, self.nodes)
         if not ok:
             return "Block is invalid."
-        # TO DO : make validators rewards
         self.update_wallets(block)
         self.blockchain.add_block(block)
         return f"Block {block.current_hash} added to blockchain."
 
     def update_wallets(self, block: Block):
+        validator = self.nodes[block.validator]
         for transaction in block.transactions:
             sender = self.nodes[transaction.sender_address]
             # to prevent double spending, catch up to transaction nonce
             if sender.nonce < transaction.nonce:
                 sender.nonce = transaction.nonce
-
             if transaction.receiver_address == "0":
                 sender.stake = transaction.amount
                 continue
-
             receiver = self.nodes[transaction.receiver_address]
             sender.balance -= transaction.amount
-            receiver.balance += transaction.amount
+            receiver.balance += transaction.amount - transaction.fee
+            validator.balance += transaction.fee
         for wallet in self.nodes.values():
             wallet.pending_balance = wallet.balance
 
-    def create_transaction(self, receiver_address: str, amount: int, message: str):
+    def create_transaction(self, receiver_address: str, amount: float, message: str):
         if receiver_address not in self.nodes:
             return "Invalid receiver address"
 
@@ -98,15 +108,11 @@ class Node:
         if not ok:
             return msg
 
-        msg, ok = self.transaction_pool.add_transaction(
-            transaction, sender_wallet)
+        msg, ok = self.transaction_pool.add_transaction(transaction)
         if not ok:
             return msg
 
         return msg
-
-    def broadcast_transaction(self, transaction: Transaction):
-        pass
 
     def view_block(self) -> Block:
         return self.blockchain.last_block()
@@ -114,13 +120,13 @@ class Node:
     def get_balance(self) -> int:
         return self.nodes[self.address].balance
 
-    def set_stake(self, amount: int) -> str:
+    def set_stake(self, amount: float) -> str:
         self.nodes[self.address].stake = amount
         return f"Stake set to {amount} successfully."
-    
-    def create_gen_block(self) :
-        gen_block = Block(previous_hash=1, validators=None, capacity=1) 
-        gen_transaction = Transaction(sender_address=self.address,
+
+    def create_gen_block(self):
+        gen_block = Block(previous_hash=1, validators=None, capacity=1)
+        gen_transaction = Transaction(sender_address="0",
                                       receiver_address=self.address,
                                       type_of_transaction="coins",
                                       amount=5000,
@@ -129,3 +135,9 @@ class Node:
         self.nodes[self.address].nonce += 1
         gen_block.add_transaction(gen_transaction)
         self.blockchain.add_block(gen_block)
+
+    def get_next_node_id(self):
+        idx = 1
+        while True:
+            yield idx
+            idx += 1
