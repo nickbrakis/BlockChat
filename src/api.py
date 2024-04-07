@@ -24,14 +24,19 @@ async def startup_event():
     bootstrap_ip = os.getenv("BOOTSTRAP")
     bootstrap_port = os.getenv("BOOTSTRAP_PORT")
     wallet = node.generate_private_wallet()
+    node.address = ip
     if bootstrap_ip == ip and bootstrap_port == port:
         node_id = 0
         node.add_node(node_id, ip, port, wallet)
     else:
         # get node id from bootstrap node
         url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
-        response = requests.post(
-            url, json={"public_key": wallet.public_key, "ip": ip, "port": port}, timeout=10)
+        response = requests.post(url, 
+                                params={"public_key": wallet.public_key, 
+                                            "ip": ip, 
+                                            "port": port}, 
+                                timeout=10)
+
         node_id = response.json()["node_id"]
         node.add_node(node_id, ip, port, wallet)
 
@@ -89,9 +94,9 @@ async def receive_mapping(mapping: dict[int, tuple[str, str, str]]):
 
 @app.post("/get_id")
 async def get_id(public_key: str, ip: str, port: int):
-    time.sleep(10)
     node_id = node.get_next_node_id()
-    node.add_node(node_id, public_key, ip, port)
+    boot_wallet = node.generate_boot_wallet(public_key, ip, port)
+    node.add_node(node_id, ip, port, boot_wallet)
     return JSONResponse({"node_id": node_id}, status_code=status.HTTP_200_OK)
 
 @app.get("/hello")

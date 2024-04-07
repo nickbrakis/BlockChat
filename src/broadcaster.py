@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 
 class Broadcaster(BaseModel):
+    # nodes = {id, [public_key, ip, port]}
     nodes: dict[int, tuple[str, str, str]] = dict()
     def __init__(self):
         super().__init__()

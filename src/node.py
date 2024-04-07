@@ -10,11 +10,14 @@ from pydantic import BaseModel
 
 class Node(BaseModel):
     address: str = None
+    # nodes = {address : wallet}
     nodes: dict[str, Wallet] = dict()
     transaction_pool: TransactionPool = TransactionPool()
     blockchain: Blockchain = Blockchain()
     id: int = None
     broadcaster: Broadcaster = Broadcaster()
+    # for bootstrap
+    gen_id: int = 0
     def __init__(self):
         super().__init__()
         self.address: str = None
@@ -24,17 +27,23 @@ class Node(BaseModel):
         self.id = None
         self.broadcaster = Broadcaster()
 
+
     def generate_private_wallet(self) -> Wallet:
         private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
         public_key_str = private_key.get_verifying_key().to_string().hex()
         private_key_str = private_key.to_string().hex()
+        return Wallet(public_key_str, private_key_str)
+    
+    def generate_boot_wallet(self, public_key: str, ip: str, port: int) -> Wallet:
+        private_key_str = -1
+        public_key_str = public_key
         return Wallet(public_key_str, private_key_str)
 
     def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
         '''Adds a node to the network.'''
         public_key = wallet.public_key
         self.broadcaster.add_node(node_id, public_key, ip, port)
-        self.nodes[public_key] = wallet
+        self.nodes[ip] = wallet
 
     def broadcast_block(self, block: Block):
         self.broadcaster.broadcast_block(block)
@@ -144,10 +153,8 @@ class Node(BaseModel):
         return gen_block
 
     def get_next_node_id(self):
-        idx = 1
-        while True:
-            yield idx
-            idx += 1
+        self.gen_id += 1
+        return self.gen_id
 
     def bootstrap(self):
         self.broadcaster.broadcast_mapping()
