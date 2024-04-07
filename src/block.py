@@ -15,6 +15,14 @@ def index_block():
 
 
 class Block(BaseModel):
+    previous_hash: str = None
+    validators: dict[str, Wallet] = dict()
+    validator: str = None
+    capacity: int = 10
+    transactions: list[Transaction] = list()
+    timestamp: int = None
+    index: int = None
+    current_hash: str = None
     def __init__(self, previous_hash: str, validators: dict[str, Wallet], capacity: int = 10):
         super().__init__()
         self.previous_hash: str = previous_hash
@@ -78,8 +86,19 @@ class Block(BaseModel):
 
     def find_validator(self, last_hash: str, validators: dict[str, Wallet]):
         random.seed(last_hash)
-        validator_bag = [
-            v for v, wallet in validators for _ in range(wallet.stake)]
-        if validator_bag.empty():
-            return random.choice(list(validators.keys()))
+        # on bootstrap, validators is None
+        if validators != None:
+            validator_bag = [
+                v for v, wallet in validators for _ in range(wallet.stake)]
+        else :
+            validator_bag = []
+        if validator_bag == []:
+            # for the a block that the staking in 0 for all 
+            if validators is not None:
+                return random.choice(list(validators.keys()))
+            # for bootstraping where the validator is the bootstrap
+            # or we can change on node :
+            #gen_block = Block(previous_hash=1, validators=self.id, capacity=1)
+            else :
+                return None
         return random.choice(validator_bag)

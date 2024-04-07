@@ -4,10 +4,13 @@ import requests
 from block import Block
 from transaction import Transaction
 from blockchain import Blockchain
+from pydantic import BaseModel
 
 
-class Broadcaster():
+class Broadcaster(BaseModel):
+    nodes: dict[int, tuple[str, str, str]] = dict()
     def __init__(self):
+        super().__init__()
         self.nodes: dict[int, tuple[str, str, str]] = dict()
 
     def broadcast_block(self, block: Block):
@@ -18,19 +21,19 @@ class Broadcaster():
 
     def broadcast_transaction(self, transaction: Transaction):
         for _, ip, port in self.nodes.values():
-            url = f"http://{ip}:{port}/receive_block"
+            url = f"http://{ip}:{port}/receive_transaction"
             transaction_json = transaction.model_dump_json()
             requests.post(url, json=transaction_json, timeout=10)
 
     def broadcast_blockchain(self, blockchain: Blockchain):
         for _, ip, port in self.nodes.values():
-            url = f"http://{ip}:{port}/receive_block"
+            url = f"http://{ip}:{port}/receive_blockchain"
             blockchain_json = blockchain.model_dump_json()
             requests.post(url, json=blockchain_json, timeout=10)
 
     def broadcast_mapping(self):
         for _, ip, port in self.nodes.values():
-            url = f"http://{ip}:{port}/receive_block"
+            url = f"http://{ip}:{port}/receive_mapping"
             mapping_json = json.dumps(self.nodes)
             requests.post(url, json=mapping_json, timeout=10)
 

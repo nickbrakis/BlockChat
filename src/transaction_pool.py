@@ -1,10 +1,13 @@
 # pylint: disable=missing-docstring
 from transaction import Transaction
 from block import Block
+from pydantic import BaseModel
 
 
-class TransactionPool:
+class TransactionPool(BaseModel):
+    pending_transactions: list[Transaction] = list()
     def __init__(self):
+        super().__init__()
         self.pending_transactions = list()
 
     def add_transaction(self, transaction: Transaction):

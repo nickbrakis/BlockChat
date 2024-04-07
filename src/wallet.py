@@ -1,9 +1,17 @@
 # pylint: disable=missing-docstring
+from pydantic import BaseModel
 
-class Wallet:
+class Wallet(BaseModel):
     '''Wallet class for the blockchain.'''
+    public_key: str = None
+    private_key: str = -1
+    nonce: int = 0
+    balance: float = 0
+    stake: float = 0
+    pending_balance: float = 0
 
     def __init__(self, public_key: str,  private_key: str = -1, nonce: int = 0, balance: float = 0, stake: float = 0):
+        super().__init__()
         self.private_key = private_key
         self.public_key = public_key
         self.nonce = nonce

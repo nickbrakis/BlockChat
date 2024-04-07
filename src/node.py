@@ -6,10 +6,17 @@ from transaction import Transaction
 from transaction_pool import TransactionPool
 from blockchain import Blockchain
 from broadcaster import Broadcaster
+from pydantic import BaseModel
 
-
-class Node:
+class Node(BaseModel):
+    address: str = None
+    nodes: dict[str, Wallet] = dict()
+    transaction_pool: TransactionPool = TransactionPool()
+    blockchain: Blockchain = Blockchain()
+    id: int = None
+    broadcaster: Broadcaster = Broadcaster()
     def __init__(self):
+        super().__init__()
         self.address: str = None
         self.nodes: dict[str, Wallet] = dict()
         self.transaction_pool: TransactionPool = TransactionPool()
@@ -123,7 +130,7 @@ class Node:
     def set_stake(self, amount: float) -> str:
         self.nodes[self.address].stake = amount
         return f"Stake set to {amount} successfully."
-
+    
     def create_gen_block(self):
         gen_block = Block(previous_hash=1, validators=None, capacity=1)
         gen_transaction = Transaction(sender_address="0",
@@ -131,7 +138,7 @@ class Node:
                                       type_of_transaction="coins",
                                       amount=5000,
                                       message="",
-                                      nonce=self.nodes[self.address].nonce)
+                                      nonce=0)
         self.nodes[self.address].nonce += 1
         gen_block.add_transaction(gen_transaction)
         return gen_block

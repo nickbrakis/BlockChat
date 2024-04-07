@@ -6,6 +6,17 @@ from wallet import Wallet
 
 
 class Transaction(BaseModel):
+    sender_address: str = None
+    receiver_address: str = None
+    type_of_transaction: str = None
+    amount: float = 0
+    fee: float = 0
+    message: str = None
+    nonce: int = 0
+    signature: bytes = None
+    transaction_id: str = None
+    transaction_data: str = None
+
     def __init__(self, sender_address: str,
                  receiver_address: str,
                  type_of_transaction: str,

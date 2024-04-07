@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 from block import Block
+from pydantic import BaseModel
 
-
-class Blockchain:
+class Blockchain(BaseModel):
+    blocks: list[Block] = list()
     def __init__(self):
+        super().__init__()
         self.blocks: list[Block] = list()
 
     def __str__(self):
