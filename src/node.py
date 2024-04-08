@@ -7,6 +7,7 @@ from transaction_pool import TransactionPool
 from blockchain import Blockchain
 from broadcaster import Broadcaster
 from pydantic import BaseModel
+import time
 
 class Node(BaseModel):
     address: str = None
@@ -157,6 +158,7 @@ class Node(BaseModel):
         return self.gen_id
 
     def bootstrap(self):
+        time.sleep(5)
         self.broadcaster.broadcast_mapping()
         gen_block = self.create_gen_block()
         self.blockchain.add_block(gen_block)

@@ -1,5 +1,5 @@
 # pylint: disable=missing-docstring
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 import requests
@@ -31,16 +31,19 @@ async def startup_event():
     else:
         # get node id from bootstrap node
         url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
-        # to test containers connectivity 
-        res = requests.get(f"http://{bootstrap_ip}:{bootstrap_port}/hello")
-        response = requests.post(url, 
-                                params={"public_key": wallet.public_key, 
-                                            "ip": ip, 
-                                            "port": port}, 
-                                timeout=10)
+        try : 
+            response = requests.post(url, 
+                                    params={"public_key": wallet.public_key, 
+                                                "ip": ip, 
+                                                "port": port}, 
+                                    timeout=10)
 
-        node_id = response.json()["node_id"]
-        node.add_node(node_id, ip, port, wallet)
+            node_id = response.json()["node_id"]
+            # to test 
+            print(node_id)
+            node.add_node(node_id, ip, port, wallet)
+        except requests.exceptions.RequestException as e:
+            print(f"Error when making request: {e}")
 
 
 ############### client/api ######################
@@ -95,10 +98,15 @@ async def receive_mapping(mapping: dict[int, tuple[str, str, str]]):
 
 
 @app.post("/get_id")
-async def get_id(public_key: str, ip: str, port: int):
+async def get_id(background_tasks: BackgroundTasks, public_key: str, ip: str, port: int):
     node_id = node.get_next_node_id()
     boot_wallet = node.generate_boot_wallet(public_key, ip, port)
     node.add_node(node_id, ip, port, boot_wallet)
+    print(f"Node with id {node_id} added.")
+
+    if node_id == 4: 
+        background_tasks.add_task(node.bootstrap())
+
     return JSONResponse({"node_id": node_id}, status_code=status.HTTP_200_OK)
 
 @app.get("/hello")

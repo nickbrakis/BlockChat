@@ -35,8 +35,7 @@ class Broadcaster(BaseModel):
     def broadcast_mapping(self):
         for _, ip, port in self.nodes.values():
             url = f"http://{ip}:{port}/receive_mapping"
-            mapping_json = json.dumps(self.nodes)
-            requests.post(url, json=mapping_json, timeout=10)
+            requests.post(url, json=self.nodes, timeout=10)
 
     def add_node(self, node_id: str, public_key: str, ip: str, port: int):
         self.nodes[node_id] = (public_key, ip, port)

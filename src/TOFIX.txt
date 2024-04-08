@@ -9,6 +9,9 @@
     auto egine FIX alla ta nodes synexizoun na min xtypane to get_id
     CONNECTIVITY metaksi twn containers 
     FIX (???) : docker networking 
+    FIXED : ta containers tou docker epikoinwnoun me --name oxi me to loopback address 127.0.0.1
+            prepei na elenksoume an auto ephreazei to programma 
+            pleon ta ip-adress einai container{i}
 
 2.
     exei auta ta orismata sto get_id : 
@@ -50,3 +53,18 @@
     api.py ln 27 +++ node.address = ip
     FIXED
 
+5. receive_mapping()
+    se kapoia to port to exoume int kai se alla einai int 
+    prepei na exoun ola to idio 
+    proteinw str
+    FIXED
+
+    den mporoun o bootstrap na kanei auto to request stous containers
+    fainetai gia networking problhma
+
+6. broadcaster.broadcast_mapping()
+    requests.post(url, json=self.nodes, timeout=10)
+    apo oti katalava den xreiazetai na kanoume to dict -> json
+    to pairnei sto body kai to metatrepei mono tou
+
+    epishs o bootstrap prepei na kanei broadcast_mapping() ston eauto tou ??
