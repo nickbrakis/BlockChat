@@ -31,6 +31,8 @@ async def startup_event():
     else:
         # get node id from bootstrap node
         url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
+        # to test containers connectivity 
+        res = requests.get(f"http://{bootstrap_ip}:{bootstrap_port}/hello")
         response = requests.post(url, 
                                 params={"public_key": wallet.public_key, 
                                             "ip": ip, 

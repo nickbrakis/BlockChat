@@ -1,48 +1,52 @@
 /get_id
 ...
 1.
-to get_id to pairnei san params
-allagi
-json={"public_key": wallet.public_key, "ip": ip, "port": port} 
-as params
-...
-auto egine FIX alla ta nodes synexizoun na min xtypane to get_id
+    to get_id to pairnei san params
+    allagi
+    json={"public_key": wallet.public_key, "ip": ip, "port": port} 
+    as params
+    ...
+    auto egine FIX alla ta nodes synexizoun na min xtypane to get_id
+    CONNECTIVITY metaksi twn containers 
+    FIX (???) : docker networking 
 
 2.
-exei auta ta orismata sto get_id : 
-node.add_node(node_id, public_key, ip, port) 
-sto definition exei : 
-def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
-ti kanoume me to wallet ??? pws to dinoume sto request ??
+    exei auta ta orismata sto get_id : 
+    node.add_node(node_id, public_key, ip, port) 
+    sto definition exei : 
+    def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
+    ti kanoume me to wallet ??? pws to dinoume sto request ??
 
-~ einai komple na pairnei o bootsrap olo to wallet ???
-diladi kai private_key allou kombou ???
+    ~ einai komple na pairnei o bootsrap olo to wallet ???
+    diladi kai private_key allou kombou ???
 
-candidate FIX :
-a. i add_node() pairnei wallet xwris to private_key
-    prin apo tin add_node() o bootstrap kanei ena 
-    generate_new_wallet_boot pou den orizei private_key
-    dld dimouirgei antigrafo tou wallet kapoiou kombou
-    def generate_new_wallet_boot(public_key: str, ip: str, port: int) -> Wallet:
-        private_key_str = -1
-        public_key_str = public_key
-        return Wallet(public_key_str, private_key_str)
+    candidate FIX :
+    a. i add_node() pairnei wallet xwris to private_key
+        prin apo tin add_node() o bootstrap kanei ena 
+        generate_new_wallet_boot pou den orizei private_key
+        dld dimouirgei antigrafo tou wallet kapoiou kombou
+        def generate_new_wallet_boot(public_key: str, ip: str, port: int) -> Wallet:
+            private_key_str = -1
+            public_key_str = public_key
+            return Wallet(public_key_str, private_key_str)
 
-b. i add_node() den pairnei wallet doulevei mono me 
-    broadcaster(), prepei na allaksei kai to node.nodes
+    b. i add_node() den pairnei wallet doulevei mono me 
+        broadcaster(), prepei na allaksei kai to node.nodes
 
 
-3. otan kanoume yield() pairnoume:
-TypeError: Object of type generator is not JSON serializable
-FIX : bazoume attribute gen_id sto node kai to auksanoume
+3. 
+    otan kanoume yield() pairnoume:
+    TypeError: Object of type generator is not JSON serializable
+    FIX : bazoume attribute gen_id sto node kai to auksanoume
 
-4. stin add_node()
-...
-self.nodes[public_key] = wallet -> self.nodes[ip] = wallet
+4. 
+    stin add_node()
+    ...
+    self.nodes[public_key] = wallet -> self.nodes[ip] = wallet
 
-~~~~~~~~~~~~~~~
-/balance
-to address menei panta keno opote :
-api.py ln 27 +++ node.address = ip
-FIXED
+    ~~~~~~~~~~~~~~~
+    /balance
+    to address menei panta keno opote :
+    api.py ln 27 +++ node.address = ip
+    FIXED
 
