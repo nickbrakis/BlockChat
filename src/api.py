@@ -14,11 +14,11 @@ from wallet import Wallet
 
 app = FastAPI()
 node = Node()
-ok_idx = 0
 
 
 @app.on_event("startup")
 async def startup_event():
+    print("Node starting up")
     ip = os.getenv("IP_ADDRESS")
     port = os.getenv("PORT")
     bootstrap_ip = os.getenv("BOOTSTRAP")
@@ -29,6 +29,8 @@ async def startup_event():
         node_id = 0
         node.add_node(node_id, ip, port, wallet)
     else:
+        print(
+            f"Node connecting to bootstrap node at {bootstrap_ip}:{bootstrap_port}")
         # get node id from bootstrap node
         url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
         try:
@@ -40,7 +42,7 @@ async def startup_event():
 
             node_id = response.json()["node_id"]
             # to test
-            print(node_id)
+            print(f'Node id :{node_id}')
             node.add_node(node_id, ip, port, wallet)
         except requests.exceptions.RequestException as e:
             print(f"Error when making request: {e}")
@@ -117,12 +119,10 @@ async def hello():
     return JSONResponse(content=msg)
 
 
-@app.post("/ok")
+@app.get("/ok")
 def ok():
-    global ok_idx
-    ok_idx += 1
-    if ok_idx == 4:
-        node.bootstrap()
+    print(f"ok from some node")
+    return JSONResponse({"message": "ok"}, status_code=status.HTTP_200_OK)
 
 
 ############ web server ######################

@@ -34,6 +34,8 @@ class Node(BaseModel):
         '''Adds a node to the network.'''
         public_key = wallet.public_key
         self.broadcaster.add_node(node_id, public_key, ip, port)
+        if wallet.private_key != -1:
+            self.broadcaster.my_ip = ip
         self.nodes[public_key] = wallet
 
 ############################################################################################################
@@ -168,6 +170,8 @@ class Node(BaseModel):
 
     def bootstrap(self):
         time.sleep(5)
+        if not self.broadcaster.broadcast_ok():
+            return
         self.broadcaster.broadcast_mapping()
         gen_block = self.create_gen_block()
         self.blockchain.add_block(gen_block)
