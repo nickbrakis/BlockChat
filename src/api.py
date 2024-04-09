@@ -3,6 +3,7 @@ import os
 import requests
 import uvicorn
 from fastapi import FastAPI, status, BackgroundTasks, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from blockchain import Blockchain
 from transaction import Transaction
@@ -45,10 +46,13 @@ async def startup_event():
 
 ############### client/api ######################
 
-@app.post("/create_transactions/{receiver_id}/{amount}/{message}")
-async def create_transaction(receiver_address: str, amount: float, message: str):
+@app.post("/create_transaction")
+async def create_transaction(request: Request):
+    receiver_address = request.query_params.get("receiver_address")
+    amount = float(request.query_params.get("amount"))
+    message = request.query_params.get("message")
     msg = node.create_transaction(receiver_address, amount, message)
-    return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
+    return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
 @app.get("/view_last_block")
@@ -61,13 +65,26 @@ async def view_last_block():
 @app.get("/balance")
 async def get_balance():
     balance = node.get_balance()
-    return JSONResponse({"balance": balance}, status_code=status.HTTP_200_OK)
+    return JSONResponse(balance, status_code=status.HTTP_200_OK)
+
+
+@app.get("/stake")
+async def get_stake():
+    stake = node.get_stake()
+    return JSONResponse(stake, status_code=status.HTTP_200_OK)
+
+
+@app.get("/get_mapping")
+async def get_mapping():
+    mapping = node.broadcaster.mapping
+    mapping_json = jsonable_encoder(mapping)
+    return JSONResponse(mapping_json, status_code=status.HTTP_200_OK)
 
 
 @app.post("/set_stake/{amount}")
 async def set_stake(amount: float):
     msg = node.set_stake(amount)
-    return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
+    return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_transaction")
@@ -75,7 +92,7 @@ async def receive_transaction(request: Request):
     data = await request.json()
     transaction = Transaction.from_dict(data)
     msg = node.receive_transaction(transaction)
-    return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
+    return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_block")
@@ -83,7 +100,7 @@ async def receive_block(request: Request):
     data = await request.json()
     block = Block.from_dict(data)
     msg = node.receive_block(block)
-    return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
+    return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_blockchain")

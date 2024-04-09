@@ -1,19 +1,27 @@
+# pylint: skip-file
 import requests
 import argparse
 import os
 
+
 def main():
     parser = argparse.ArgumentParser(description="My Application")
-    parser.add_argument("-p", "--port", help="Port in which node is running", default=8000, type=int)
-    parser.add_argument("--ip", help="IP of the host", default="127.0.0.1")
+    parser.add_argument("-c", "--container",
+                        help="Container Number to talk to", default=0, type=int)
     args = parser.parse_args()
 
-    ip_address = args.ip
-    port = args.port
-    url = f"http://{ip_address}:{port}/"
-    
+    port = 8000 + args.container
+    url = f"http://localhost:{port}/"
+
+    mapping_string = requests.get(f"{url}get_mapping").json()
+    mapping = {int(key): value for key, value in mapping_string.items()}
     os.system("clear")
-    while(True):
+    while (True):
+        balance = requests.get(f"{url}balance").json()
+        print(f"Your balance is: {balance}")
+        stake = requests.get(f"{url}stake").json()
+        print(f"Your stake is: {stake}")
+        print("\n")
         print("1. Create Transaction")
         print("2. View Last Block")
         print("3. Get Balance")
@@ -21,12 +29,32 @@ def main():
         print("5. Print Hello")
         print("6. Exit")
         choice = int(input("Enter your choice: "))
+        os.system("clear")
         if choice == 1:
-            receiver_address = input("Enter receiver address: ")
-            amount = float(input("Enter amount: "))
-            message = input("Enter message: ")
+            print("Available nodes:")
+            for key, value in mapping.items():
+                print(f"Node {key}: {value[0]}")
+            node_id = input("Enter node id: ")
+            os.system("clear")
+            receiver_address = mapping[int(node_id)][0]
+            print("1. Send coins\n2. Send message\n")
+            choice = int(input("Enter your choice:"))
+            os.system("clear")
+            if choice == 1:
+                amount = float(input("Enter amount: "))
+                os.system("clear")
+                message = ""
+            elif choice == 2:
+                message = input("Enter message: ")
+                os.system("clear")
+                amount = len(message)
+            request_data = {
+                "receiver_address": receiver_address,
+                "amount": amount,
+                "message": message,
+            }
             response = requests.post(
-                f"{url}create_transactions/{receiver_address}/{amount}/{message}")
+                f"{url}create_transaction", params=request_data)
             print(response.json())
         elif choice == 2:
             response = requests.get(f"{url}view_last_block")
@@ -45,6 +73,7 @@ def main():
             break
         else:
             print("Invalid choice")
+
 
 if __name__ == "__main__":
     main()

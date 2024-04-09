@@ -40,8 +40,8 @@ class Wallet(BaseModel):
             raise ValueError("Private key is not set, wallet is public!")
         return self.private_key
 
-    def pending_balance_check(self, amount: float):
-        return self.pending_balance - self.stake >= amount
+    def pending_balance_check(self, amount: float, fee: float):
+        return self.pending_balance - self.stake >= amount + fee
 
     def stake_check(self, stake_amount: float):
         return self.pending_balance >= stake_amount

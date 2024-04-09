@@ -50,6 +50,9 @@ class Node(BaseModel):
 ############################################################################################################
 # Wallet Methods
 
+    def get_stake(self) -> float:
+        return self.nodes[self.address].stake
+
     def generate_private_wallet(self) -> Wallet:
         private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
         public_key_str = private_key.get_verifying_key().to_string().hex()
@@ -67,22 +70,26 @@ class Node(BaseModel):
                 sender.stake = transaction.amount
                 continue
             receiver = self.nodes[transaction.receiver_address]
-            sender.balance -= transaction.amount
-            receiver.balance += transaction.amount - transaction.fee
+            sender.balance -= transaction.amount + transaction.fee
+            receiver.balance += transaction.amount
             validator.balance += transaction.fee
         for wallet in self.nodes.values():
             wallet.pending_balance = wallet.balance
 
     def update_wallets_from_bootstrap(self, blockchain: Blockchain):
+        print("malakas")
         for block in blockchain.blocks:
             for transaction in block.transactions:
+                sender = None
                 if transaction.sender_address != "0":
                     sender = self.nodes[transaction.sender_address]
                 if transaction.receiver_address == "0":
                     sender.stake = transaction.amount
                     continue
                 receiver = self.nodes[transaction.receiver_address]
-                receiver.balance += transaction.amount - transaction.fee
+                if sender is not None:
+                    sender.balance -= transaction.amount
+                receiver.balance += transaction.amount
             for wallet in self.nodes.values():
                 wallet.pending_balance = wallet.balance
 
@@ -138,7 +145,8 @@ class Node(BaseModel):
             else:
                 return None, True
         else:
-            if not wallet.pending_balance_check(amount):
+            fee = amount * 0.03
+            if not wallet.pending_balance_check(amount, fee):
                 return "Failed balance check"
 
         nonce = self.nodes[self.address].nonce
@@ -202,10 +210,13 @@ class Node(BaseModel):
         self.broadcaster.broadcast_mapping()
         gen_block = self.create_gen_block()
         self.blockchain.add_block(gen_block)
+        logger.info("genesis block = %s", gen_block)
 
         # transaction for each node transferring 1000 coins
+        transactions = []
         next_block = Block(previous_hash=self.blockchain.last_block().current_hash,
                            validators=None,
+                           transactions=transactions,
                            capacity=5)
         for node in self.nodes:
             if self.address == node:
@@ -233,4 +244,5 @@ class Node(BaseModel):
         next_block.add_transaction(first_stake)
         self.blockchain.add_block(next_block)
         self.update_wallets_from_bootstrap(self.blockchain)
+        logger.info("genesis block = %s", gen_block)
         self.broadcast_blockchain(self.blockchain)

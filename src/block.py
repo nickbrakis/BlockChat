@@ -34,7 +34,10 @@ class Block(BaseModel):
         self.transactions: list[Transaction] = transactions
         self.timestamp: int = timestamp
         self.index: int = index
-        self.current_hash: str = current_hash
+        if current_hash is None:
+            self.current_hash: str = self.calculate_hash()
+        else:
+            self.current_hash: str = current_hash
 
     @classmethod
     def from_dict(cls, data: dict):

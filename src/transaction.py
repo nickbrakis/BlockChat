@@ -28,7 +28,7 @@ class Transaction(BaseModel):
         self.receiver_address = receiver_address
         self.type_of_transaction = type_of_transaction
         self.fee = amount * 0.03
-        self.amount = amount + self.fee
+        self.amount = amount
         self.message = message
         self.nonce = nonce
         self.signature = signature
@@ -96,7 +96,7 @@ class Transaction(BaseModel):
                 wallet.nonce += 1
                 return None, True
         else:
-            if not wallet.pending_balance_check(self.amount):
+            if not wallet.pending_balance_check(self.amount, self.fee):
                 return "Failed balance check", False
         if self.nonce <= wallet.nonce:
             return "Invalid nonce", False
