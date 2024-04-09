@@ -73,6 +73,19 @@ class Node(BaseModel):
         for wallet in self.nodes.values():
             wallet.pending_balance = wallet.balance
 
+    def update_wallets_from_bootstrap(self, blockchain: Blockchain):
+        for block in blockchain.blocks:
+            for transaction in block.transactions:
+                if transaction.sender_address != "0":
+                    sender = self.nodes[transaction.sender_address]
+                if transaction.receiver_address == "0":
+                    sender.stake = transaction.amount
+                    continue
+                receiver = self.nodes[transaction.receiver_address]
+                receiver.balance += transaction.amount - transaction.fee
+            for wallet in self.nodes.values():
+                wallet.pending_balance = wallet.balance
+
     def get_balance(self) -> int:
         return self.nodes[self.address].balance
 
@@ -87,11 +100,6 @@ class Node(BaseModel):
         return self.blockchain.last_block()
 
     def receive_block(self, block: Block) -> str:
-        if block.index == 1:
-            self.update_wallets(block)
-            self.blockchain.add_block(block)
-            return "Genesis block added to blockchain."
-
         last_hash = self.blockchain.last_block().current_hash
         ok = block.validate_block(last_hash, self.nodes)
         if not ok:
@@ -99,6 +107,13 @@ class Node(BaseModel):
         self.update_wallets(block)
         self.blockchain.add_block(block)
         return f"Block {block.current_hash} added to blockchain."
+
+    def receive_bootstrap_blockchain(self, blockchain: Blockchain):
+        if len(self.blockchain.blocks) > 0:
+            return "Blockchain already exists."
+        logger.info("Receiving blockchain: %s", blockchain)
+        self.blockchain = blockchain
+        self.update_wallets_from_bootstrap(blockchain)
 
     def broadcast_block(self, block: Block):
         self.broadcaster.broadcast_block(block)
@@ -166,7 +181,6 @@ class Node(BaseModel):
 ############################################################################################################
 # Bootstrap Methods
 
-
     def get_next_node_id(self):
         self.gen_id += 1
         return self.gen_id
@@ -185,16 +199,14 @@ class Node(BaseModel):
 
     async def bootstrap(self):
         self.broadcaster.broadcast_ok()
-        logger.info("Broadcasting ok.")
         self.broadcaster.broadcast_mapping()
-        logger.info("Broadcasting mapping.")
         gen_block = self.create_gen_block()
-        logger.info("Creating genesis block.")
         self.blockchain.add_block(gen_block)
-        logger.info("Genesis block added.")
-        self.broadcast_blockchain(self.blockchain)
-        logger.info("Broadcasting blockchain.")
+
         # transaction for each node transferring 1000 coins
+        next_block = Block(previous_hash=self.blockchain.last_block().current_hash,
+                           validators=None,
+                           capacity=5)
         for node in self.nodes:
             if self.address == node:
                 continue
@@ -207,7 +219,18 @@ class Node(BaseModel):
             transaction.sign_transaction(
                 self.nodes[self.address].get_private_key())
             self.nodes[self.address].nonce += 1
-            self.receive_transaction(transaction)
-            logger.info("Transaction for %s created.", node)
-            self.broadcast_transaction(transaction)
-            logger.info("Transaction for %s broadcasted.", node)
+            next_block.add_transaction(transaction)
+
+        first_stake = Transaction(sender_address=self.address,
+                                  receiver_address="0",
+                                  type_of_transaction="stake",
+                                  amount=1,
+                                  message="",
+                                  nonce=self.nodes[self.address].nonce)
+        first_stake.sign_transaction(
+            self.nodes[self.address].get_private_key())
+        self.nodes[self.address].nonce += 1
+        next_block.add_transaction(first_stake)
+        self.blockchain.add_block(next_block)
+        self.update_wallets_from_bootstrap(self.blockchain)
+        self.broadcast_blockchain(self.blockchain)

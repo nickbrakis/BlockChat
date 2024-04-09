@@ -15,7 +15,6 @@ class Transaction(BaseModel):
     nonce: int = 0
     signature: bytes = None
     transaction_id: str = None
-    transaction_data: str = None
 
     def __init__(self, sender_address: str,
                  receiver_address: str,
@@ -41,6 +40,17 @@ class Transaction(BaseModel):
                                                  self.nonce)
         self.transaction_id = hashlib.sha256(
             transaction_data.encode()).hexdigest()
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        sender_address = data.get('sender_address')
+        receiver_address = data.get('receiver_address')
+        type_of_transaction = data.get('type_of_transaction')
+        amount = data.get('amount')
+        message = data.get('message')
+        nonce = data.get('nonce')
+        signature = data.get('signature')
+        return cls(sender_address, receiver_address, type_of_transaction, amount, message, nonce, signature)
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -93,16 +103,3 @@ class Transaction(BaseModel):
         wallet.nonce += 1
         wallet.pending_balance -= self.amount
         return None, True
-
-    def to_dict(self) -> dict:
-        return {
-            'sender_address': self.sender_address,
-            'receiver_address': self.receiver_address,
-            'type_of_transaction': self.type_of_transaction,
-            'amount': self.amount,
-            'fee': self.fee,
-            'message': self.message,
-            'nonce': self.nonce,
-            'signature': self.signature,
-            'transaction_id': self.transaction_id
-        }

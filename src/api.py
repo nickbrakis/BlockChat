@@ -2,7 +2,7 @@
 import os
 import requests
 import uvicorn
-from fastapi import FastAPI, status, BackgroundTasks
+from fastapi import FastAPI, status, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
 from blockchain import Blockchain
 from transaction import Transaction
@@ -71,20 +71,26 @@ async def set_stake(amount: float):
 
 
 @app.post("/receive_transaction")
-async def receive_transaction(transaction: Transaction):
+async def receive_transaction(request: Request):
+    data = await request.json()
+    transaction = Transaction.from_dict(data)
     msg = node.receive_transaction(transaction)
     return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_block")
-async def receive_block(block: Block):
+async def receive_block(request: Request):
+    data = await request.json()
+    block = Block.from_dict(data)
     msg = node.receive_block(block)
     return JSONResponse({"message": msg}, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_blockchain")
-async def receive_blockchain(blockchain: Blockchain):
-    node.blockchain = blockchain
+async def receive_blockchain(request: Request):
+    data = await request.json()  # Get raw JSON from request body
+    blockchain = Blockchain.from_dict(data)
+    node.receive_bootstrap_blockchain(blockchain)
     return JSONResponse({"message": "Blockchain received"}, status_code=status.HTTP_200_OK)
 
 

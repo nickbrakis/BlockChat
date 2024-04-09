@@ -7,7 +7,7 @@ from transaction import Transaction
 from wallet import Wallet
 
 
-index_generator = (i for i in range(1, 1000000))
+index_generator = ()
 
 
 class Block(BaseModel):
@@ -20,15 +20,38 @@ class Block(BaseModel):
     index: int = None
     current_hash: str = None
 
-    def __init__(self, previous_hash: str, validators: dict[str, Wallet], capacity: int = 10):
+    def __init__(self, previous_hash: str,
+                 validators: dict[str, Wallet],
+                 capacity: int = 10,
+                 transactions: list[Transaction] = list(),
+                 timestamp: int = int(time.time()),
+                 index: int = next(i for i in range(1, 1000000)),
+                 current_hash: str = None):
         super().__init__()
         self.previous_hash: str = previous_hash
         self.capacity: int = capacity
         self.validator: str = self.find_validator(previous_hash, validators)
-        self.transactions: list[Transaction] = list()
-        self.timestamp: int = int(time.time())
-        self.index: int = next(index_generator)
-        self.current_hash: str = None
+        self.transactions: list[Transaction] = transactions
+        self.timestamp: int = timestamp
+        self.index: int = index
+        self.current_hash: str = current_hash
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        previous_hash = data.get('previous_hash')
+        validators_dict = data.get('validators')
+        validators = dict()
+        for address, wallet_dict in validators_dict.items():
+            validators[address] = Wallet.from_dict(wallet_dict)
+        capacity = data.get('capacity')
+        transactions_dict = data.get('transactions')
+        transactions = []
+        for t_dict in transactions_dict:
+            transactions.append(Transaction.from_dict(t_dict))
+        timestamp = data.get('timestamp')
+        index = data.get('index')
+        current_hash = data.get('current_hash')
+        return cls(previous_hash, validators, capacity, transactions, timestamp, index, current_hash)
 
     def calculate_hash(self) -> str:
         block_string = "{}{}{}{}".format(self.previous_hash,
@@ -75,24 +98,5 @@ class Block(BaseModel):
         else:
             validator_bag = []
         if validator_bag == []:
-            # for the a block that the staking in 0 for all
-            if validators is not None:
-                return random.choice(list(validators.keys()))
-            # for bootstraping where the validator is the bootstrap
-            # or we can change on node :
-            # gen_block = Block(previous_hash=1, validators=self.id, capacity=1)
-            else:
-                return None
+            return None
         return random.choice(validator_bag)
-
-    def to_dict(self):
-        return {
-            'previous_hash': self.previous_hash,
-            'validators': {address: wallet.to_dict() for address, wallet in self.validators.items()},
-            'validator': self.validator,
-            'capacity': self.capacity,
-            'transactions': [transaction.to_dict() for transaction in self.transactions],
-            'timestamp': self.timestamp,
-            'index': self.index,
-            'current_hash': self.current_hash
-        }

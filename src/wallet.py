@@ -20,6 +20,15 @@ class Wallet(BaseModel):
         self.stake = stake
         self.pending_balance = balance
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        public_key = data.get('public_key')
+        private_key = data.get('private_key')
+        nonce = data.get('nonce')
+        balance = data.get('balance')
+        stake = data.get('stake')
+        return cls(public_key, private_key, nonce, balance, stake)
+
     def __str__(self) -> str:
         return str(self.__class__) + ": " + str(self.__dict__)
 
