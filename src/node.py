@@ -9,6 +9,7 @@ from broadcaster import Broadcaster
 from pydantic import BaseModel
 import time
 
+
 class Node(BaseModel):
     address: str = None
     # nodes = {address : wallet}
@@ -19,6 +20,7 @@ class Node(BaseModel):
     broadcaster: Broadcaster = Broadcaster()
     # for bootstrap
     gen_id: int = 0
+
     def __init__(self):
         super().__init__()
         self.address: str = None
@@ -28,41 +30,20 @@ class Node(BaseModel):
         self.id = None
         self.broadcaster = Broadcaster()
 
+    def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
+        '''Adds a node to the network.'''
+        public_key = wallet.public_key
+        self.broadcaster.add_node(node_id, public_key, ip, port)
+        self.nodes[public_key] = wallet
+
+############################################################################################################
+# Wallet Methods
 
     def generate_private_wallet(self) -> Wallet:
         private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
         public_key_str = private_key.get_verifying_key().to_string().hex()
         private_key_str = private_key.to_string().hex()
         return Wallet(public_key_str, private_key_str)
-    
-    def generate_boot_wallet(self, public_key: str, ip: str, port: int) -> Wallet:
-        private_key_str = -1
-        public_key_str = public_key
-        return Wallet(public_key_str, private_key_str)
-
-    def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
-        '''Adds a node to the network.'''
-        public_key = wallet.public_key
-        self.broadcaster.add_node(node_id, public_key, ip, port)
-        self.nodes[ip] = wallet
-
-    def broadcast_block(self, block: Block):
-        self.broadcaster.broadcast_block(block)
-
-    def broadcast_transaction(self, transaction: Transaction):
-        self.broadcaster.broadcast_transaction(transaction)
-
-    def broadcast_blockchain(self, blockchain: Blockchain):
-        self.broadcaster.broadcast_blockchain(blockchain)
-
-    def receive_block(self, block: Block) -> str:
-        last_hash = self.blockchain.last_block().current_hash
-        ok = block.validate_block(last_hash, self.nodes)
-        if not ok:
-            return "Block is invalid."
-        self.update_wallets(block)
-        self.blockchain.add_block(block)
-        return f"Block {block.current_hash} added to blockchain."
 
     def update_wallets(self, block: Block):
         validator = self.nodes[block.validator]
@@ -80,6 +61,40 @@ class Node(BaseModel):
             validator.balance += transaction.fee
         for wallet in self.nodes.values():
             wallet.pending_balance = wallet.balance
+
+    def get_balance(self) -> int:
+        return self.nodes[self.address].balance
+
+    def set_stake(self, amount: float) -> str:
+        self.nodes[self.address].stake = amount
+        return f"Stake set to {amount} successfully."
+
+############################################################################################################
+# Block & Blockchain Methods
+
+    def view_block(self) -> Block:
+        return self.blockchain.last_block()
+
+    def receive_block(self, block: Block) -> str:
+        last_hash = self.blockchain.last_block().current_hash
+        ok = block.validate_block(last_hash, self.nodes)
+        if not ok:
+            return "Block is invalid."
+        self.update_wallets(block)
+        self.blockchain.add_block(block)
+        return f"Block {block.current_hash} added to blockchain."
+
+    def broadcast_block(self, block: Block):
+        self.broadcaster.broadcast_block(block)
+
+    def broadcast_blockchain(self, blockchain: Blockchain):
+        self.broadcaster.broadcast_blockchain(blockchain)
+
+############################################################################################################
+# Transaction Methods
+
+    def broadcast_transaction(self, transaction: Transaction):
+        self.broadcaster.broadcast_transaction(transaction)
 
     def create_transaction(self, receiver_address: str, amount: float, message: str):
         if receiver_address not in self.nodes:
@@ -131,16 +146,14 @@ class Node(BaseModel):
 
         return msg
 
-    def view_block(self) -> Block:
-        return self.blockchain.last_block()
 
-    def get_balance(self) -> int:
-        return self.nodes[self.address].balance
+############################################################################################################
+# Bootstrap Methods
 
-    def set_stake(self, amount: float) -> str:
-        self.nodes[self.address].stake = amount
-        return f"Stake set to {amount} successfully."
-    
+    def get_next_node_id(self):
+        self.gen_id += 1
+        return self.gen_id
+
     def create_gen_block(self):
         gen_block = Block(previous_hash=1, validators=None, capacity=1)
         gen_transaction = Transaction(sender_address="0",
@@ -152,10 +165,6 @@ class Node(BaseModel):
         self.nodes[self.address].nonce += 1
         gen_block.add_transaction(gen_transaction)
         return gen_block
-
-    def get_next_node_id(self):
-        self.gen_id += 1
-        return self.gen_id
 
     def bootstrap(self):
         time.sleep(5)

@@ -1,3 +1,4 @@
+#!/bin/bash
 docker rm -f $(docker ps -a -q)
 docker network create -d bridge my_network
 docker build -t blockchat .

@@ -19,9 +19,11 @@
     sto definition exei : 
     def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
     ti kanoume me to wallet ??? pws to dinoume sto request ??
+    -> swsto htan, ksexasa na ftiaxnw to wallet sthn get_id, pairnei wallet, den xreiazetai h generate_boot_wallet
 
     ~ einai komple na pairnei o bootsrap olo to wallet ???
     diladi kai private_key allou kombou ???
+    -> oxi pairnei mono to public key swsta
 
     candidate FIX :
     a. i add_node() pairnei wallet xwris to private_key
@@ -46,12 +48,14 @@
     stin add_node()
     ...
     self.nodes[public_key] = wallet -> self.nodes[ip] = wallet
-
+    -> ^^^ auto einai lathos h self.nodes prepei na douleuei me public_key
     ~~~~~~~~~~~~~~~
     /balance
     to address menei panta keno opote :
     api.py ln 27 +++ node.address = ip
     FIXED
+    to address kai to public key ta xreiazomaste gia to diktyo
+    -> address=public key, giati xreiazomaste thn ip kapou allou peran tou broadcaster?
 
 5. receive_mapping()
     se kapoia to port to exoume int kai se alla einai int 
@@ -66,5 +70,8 @@
     requests.post(url, json=self.nodes, timeout=10)
     apo oti katalava den xreiazetai na kanoume to dict -> json
     to pairnei sto body kai to metatrepei mono tou
+    -> Ara fixed?
+
 
     epishs o bootstrap prepei na kanei broadcast_mapping() ston eauto tou ??
+    -> Oxi prepei na afairoume sta broadcast thn ip aftou pou kanei broadcast me ena continue

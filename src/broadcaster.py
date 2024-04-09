@@ -1,15 +1,15 @@
 # pylint: disable=missing-docstring
-import json
+from pydantic import BaseModel
 import requests
 from block import Block
 from transaction import Transaction
 from blockchain import Blockchain
-from pydantic import BaseModel
 
 
 class Broadcaster(BaseModel):
     # nodes = {id, [public_key, ip, port]}
     nodes: dict[int, tuple[str, str, str]] = dict()
+
     def __init__(self):
         super().__init__()
         self.nodes: dict[int, tuple[str, str, str]] = dict()
