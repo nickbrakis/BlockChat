@@ -7,11 +7,7 @@ from transaction import Transaction
 from wallet import Wallet
 
 
-def index_block():
-    i = 0
-    while True:
-        yield i
-        i += 1
+index_generator = (i for i in range(1, 1000000))
 
 
 class Block(BaseModel):
@@ -23,6 +19,7 @@ class Block(BaseModel):
     timestamp: int = None
     index: int = None
     current_hash: str = None
+
     def __init__(self, previous_hash: str, validators: dict[str, Wallet], capacity: int = 10):
         super().__init__()
         self.previous_hash: str = previous_hash
@@ -30,7 +27,7 @@ class Block(BaseModel):
         self.validator: str = self.find_validator(previous_hash, validators)
         self.transactions: list[Transaction] = list()
         self.timestamp: int = int(time.time())
-        self.index: int = index_block()
+        self.index: int = next(index_generator)
         self.current_hash: str = None
 
     def calculate_hash(self) -> str:
@@ -69,36 +66,33 @@ class Block(BaseModel):
     def add_transaction(self, transaction: Transaction) -> None:
         self.transactions.append(transaction)
 
-    def to_json(self) -> dict:
-        transactions_list = self.transactions
-        validator_id = self.validator
-
-        transactions = []
-        for transaction in transactions_list:
-            transactions.append(
-                {
-                    "sender_id": transaction.sender_address,
-                    "receiver_id": transaction.receiver_address,
-                    "amount": transaction.amount
-                }
-            )
-        transactions.append({"validator": validator_id})
-
     def find_validator(self, last_hash: str, validators: dict[str, Wallet]):
         random.seed(last_hash)
         # on bootstrap, validators is None
-        if validators != None:
+        if validators is not None:
             validator_bag = [
                 v for v, wallet in validators for _ in range(wallet.stake)]
-        else :
+        else:
             validator_bag = []
         if validator_bag == []:
-            # for the a block that the staking in 0 for all 
+            # for the a block that the staking in 0 for all
             if validators is not None:
                 return random.choice(list(validators.keys()))
             # for bootstraping where the validator is the bootstrap
             # or we can change on node :
-            #gen_block = Block(previous_hash=1, validators=self.id, capacity=1)
-            else :
+            # gen_block = Block(previous_hash=1, validators=self.id, capacity=1)
+            else:
                 return None
         return random.choice(validator_bag)
+
+    def to_dict(self):
+        return {
+            'previous_hash': self.previous_hash,
+            'validators': {address: wallet.to_dict() for address, wallet in self.validators.items()},
+            'validator': self.validator,
+            'capacity': self.capacity,
+            'transactions': [transaction.to_dict() for transaction in self.transactions],
+            'timestamp': self.timestamp,
+            'index': self.index,
+            'current_hash': self.current_hash
+        }

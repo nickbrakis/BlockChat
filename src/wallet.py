@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 from pydantic import BaseModel
 
+
 class Wallet(BaseModel):
     '''Wallet class for the blockchain.'''
     public_key: str = None
@@ -10,7 +11,7 @@ class Wallet(BaseModel):
     stake: float = 0
     pending_balance: float = 0
 
-    def __init__(self, public_key: str,  private_key: str = -1, nonce: int = 0, balance: float = 0, stake: float = 0):
+    def __init__(self, public_key: str,  private_key: str = None, nonce: int = 0, balance: float = 0, stake: float = 0):
         super().__init__()
         self.private_key = private_key
         self.public_key = public_key
@@ -26,7 +27,7 @@ class Wallet(BaseModel):
         self.stake = stake_amount
 
     def get_private_key(self) -> str:
-        if self.private_key == -1:
+        if self.private_key is None:
             raise ValueError("Private key is not set, wallet is public!")
         return self.private_key
 
@@ -35,3 +36,12 @@ class Wallet(BaseModel):
 
     def stake_check(self, stake_amount: float):
         return self.pending_balance >= stake_amount
+
+    def to_dict(self) -> dict:
+        return {
+            'public_key': self.public_key,
+            'private_key': self.private_key,
+            'nonce': self.nonce,
+            'balance': self.balance,
+            'stake': self.stake
+        }

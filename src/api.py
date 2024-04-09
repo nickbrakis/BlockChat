@@ -4,7 +4,6 @@ import requests
 import uvicorn
 from fastapi import FastAPI, status, BackgroundTasks
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from blockchain import Blockchain
 from transaction import Transaction
 from node import Node
@@ -20,30 +19,26 @@ node = Node()
 async def startup_event():
     print("Node starting up")
     ip = os.getenv("IP_ADDRESS")
-    port = os.getenv("PORT")
     bootstrap_ip = os.getenv("BOOTSTRAP")
-    bootstrap_port = os.getenv("BOOTSTRAP_PORT")
     wallet = node.generate_private_wallet()
     node.address = wallet.public_key
-    if bootstrap_ip == ip and bootstrap_port == port:
+    if bootstrap_ip == ip:
         node_id = 0
-        node.add_node(node_id, ip, port, wallet)
+        node.add_node(node_id, ip, wallet)
     else:
-        print(
-            f"Node connecting to bootstrap node at {bootstrap_ip}:{bootstrap_port}")
+        print(f"Node connecting to bootstrap node at {bootstrap_ip}")
         # get node id from bootstrap node
-        url = f"http://{bootstrap_ip}:{bootstrap_port}/get_id"
+        url = f"http://{bootstrap_ip}:8000/get_id"
         try:
             response = requests.post(url,
                                      params={"public_key": wallet.public_key,
-                                             "ip": ip,
-                                             "port": port},
+                                             "ip": ip},
                                      timeout=10)
 
             node_id = response.json()["node_id"]
             # to test
             print(f'Node id :{node_id}')
-            node.add_node(node_id, ip, port, wallet)
+            node.add_node(node_id, ip, wallet)
         except requests.exceptions.RequestException as e:
             print(f"Error when making request: {e}")
 
@@ -94,34 +89,27 @@ async def receive_blockchain(blockchain: Blockchain):
 
 
 @app.post("/receive_mapping")
-async def receive_mapping(mapping: dict[int, tuple[str, str, str]]):
-    node.broadcaster.nodes = mapping
+async def receive_mapping(mapping: dict[int, tuple[str, str]]):
+    node.receive_mapping(mapping)
     return JSONResponse({"message": "Mapping received"}, status_code=status.HTTP_200_OK)
 
 
 @app.post("/get_id")
-async def get_id(background_tasks: BackgroundTasks, public_key: str, ip: str, port: int):
+async def get_id(background_tasks: BackgroundTasks, public_key: str, ip: str):
     node_id = node.get_next_node_id()
     new_node_wallet = Wallet(public_key=public_key)
-    node.add_node(node_id=node_id, ip=ip, port=port, wallet=new_node_wallet)
+    node.add_node(node_id=node_id, ip=ip, wallet=new_node_wallet)
     print(f"Node with id {node_id} added.")
 
     if node_id == 4:
-        background_tasks.add_task(node.bootstrap())
+        background_tasks.add_task(node.bootstrap)
 
     return JSONResponse({"node_id": node_id}, status_code=status.HTTP_200_OK)
 
 
-@app.get("/hello")
-async def hello():
-    print("hello")
-    msg = jsonable_encoder("hello")
-    return JSONResponse(content=msg)
-
-
 @app.get("/ok")
 def ok():
-    print(f"ok from some node")
+    print("ok from some node")
     return JSONResponse({"message": "ok"}, status_code=status.HTTP_200_OK)
 
 

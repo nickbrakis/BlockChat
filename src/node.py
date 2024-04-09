@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+from pydantic import BaseModel
+import logging
 import ecdsa
 from wallet import Wallet
 from block import Block
@@ -6,13 +8,13 @@ from transaction import Transaction
 from transaction_pool import TransactionPool
 from blockchain import Blockchain
 from broadcaster import Broadcaster
-from pydantic import BaseModel
-import time
+
+logger = logging.getLogger('uvicorn')
 
 
 class Node(BaseModel):
     address: str = None
-    # nodes = {address : wallet}
+    # nodes = {public_key : wallet}
     nodes: dict[str, Wallet] = dict()
     transaction_pool: TransactionPool = TransactionPool()
     blockchain: Blockchain = Blockchain()
@@ -30,13 +32,20 @@ class Node(BaseModel):
         self.id = None
         self.broadcaster = Broadcaster()
 
-    def add_node(self, node_id: int, ip: str, port: int, wallet: Wallet):
+    def add_node(self, node_id: int, ip: str, wallet: Wallet):
         '''Adds a node to the network.'''
         public_key = wallet.public_key
-        self.broadcaster.add_node(node_id, public_key, ip, port)
-        if wallet.private_key != -1:
+        self.broadcaster.add_node(node_id, public_key, ip)
+        if wallet.private_key is not None:
             self.broadcaster.my_ip = ip
         self.nodes[public_key] = wallet
+
+    def receive_mapping(self, mapping: dict[int, tuple[str, str]]):
+        print(mapping)
+        for node_id, (public_key, ip) in mapping.items():
+            if public_key == self.address:
+                continue
+            self.add_node(node_id, ip, Wallet(public_key))
 
 ############################################################################################################
 # Wallet Methods
@@ -78,6 +87,11 @@ class Node(BaseModel):
         return self.blockchain.last_block()
 
     def receive_block(self, block: Block) -> str:
+        if block.index == 1:
+            self.update_wallets(block)
+            self.blockchain.add_block(block)
+            return "Genesis block added to blockchain."
+
         last_hash = self.blockchain.last_block().current_hash
         ok = block.validate_block(last_hash, self.nodes)
         if not ok:
@@ -152,6 +166,7 @@ class Node(BaseModel):
 ############################################################################################################
 # Bootstrap Methods
 
+
     def get_next_node_id(self):
         self.gen_id += 1
         return self.gen_id
@@ -168,15 +183,18 @@ class Node(BaseModel):
         gen_block.add_transaction(gen_transaction)
         return gen_block
 
-    def bootstrap(self):
-        time.sleep(5)
-        if not self.broadcaster.broadcast_ok():
-            return
+    async def bootstrap(self):
+        self.broadcaster.broadcast_ok()
+        logger.info("Broadcasting ok.")
         self.broadcaster.broadcast_mapping()
+        logger.info("Broadcasting mapping.")
         gen_block = self.create_gen_block()
+        logger.info("Creating genesis block.")
         self.blockchain.add_block(gen_block)
+        logger.info("Genesis block added.")
         self.broadcast_blockchain(self.blockchain)
-        # transaction for each node tranferring 1000 coins
+        logger.info("Broadcasting blockchain.")
+        # transaction for each node transferring 1000 coins
         for node in self.nodes:
             if self.address == node:
                 continue
@@ -186,6 +204,10 @@ class Node(BaseModel):
                                       amount=1000,
                                       message="",
                                       nonce=self.nodes[self.address].nonce)
+            transaction.sign_transaction(
+                self.nodes[self.address].get_private_key())
             self.nodes[self.address].nonce += 1
             self.receive_transaction(transaction)
+            logger.info("Transaction for %s created.", node)
             self.broadcast_transaction(transaction)
+            logger.info("Transaction for %s broadcasted.", node)
