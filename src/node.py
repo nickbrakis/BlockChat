@@ -9,6 +9,7 @@ from transaction import Transaction
 from transaction_pool import TransactionPool
 from blockchain import Blockchain
 from broadcaster import Broadcaster
+import time
 
 logger = logging.getLogger('uvicorn')
 
@@ -22,6 +23,10 @@ class Node(BaseModel):
     blockchain: Blockchain = Blockchain()
     id: int = None
     broadcaster: Broadcaster = Broadcaster()
+    last_block_time: int = 0
+    block_time: int = 0
+    block_times: list = []
+    num_nodes: int = 4
     # for bootstrap
     gen_id: int = 0
 
@@ -109,9 +114,11 @@ class Node(BaseModel):
         return self.blockchain.last_block()
 
     def receive_block(self, block: Block) -> str:
+        self.update_avg_block_time()
         last_hash = self.blockchain.last_block().current_hash
         ok = block.validate_block(last_hash, self.nodes)
         if not ok:
+            logger.error("ERRBLOCK Block is invalid.")
             return "Block is invalid."
         self.update_wallets(block)
         self.transaction_pool.update_from_block(block)
@@ -125,6 +132,7 @@ class Node(BaseModel):
         self.update_wallets_from_bootstrap(blockchain)
 
     def broadcast_block(self, block: Block):
+        self.update_avg_block_time()
         self.broadcaster.broadcast_block(block)
 
     def broadcast_blockchain(self, blockchain: Blockchain):
@@ -138,6 +146,10 @@ class Node(BaseModel):
         if validator is None:
             return
         if validator != self.address:
+            logger.error("ERRMINT Not the validator.")
+            logger.error(f"ERRMINT Validator: {validator}")
+            logger.error(f"ERRMINT Me: {self.address}")
+            logger.error(f"ERRMINT Last Hash: {last_hash}")
             return
         pending = self.transaction_pool.get_pending_transactions()
         transactions = []
@@ -148,9 +160,18 @@ class Node(BaseModel):
         for _ in range(self.capacity):
             next_block.add_transaction(pending.popleft())
         next_block.validator = self.address
+        next_block.current_hash = next_block.calculate_hash()
         self.blockchain.add_block(next_block)
         self.update_wallets(next_block)
         self.broadcast_block(next_block)
+
+    def update_avg_block_time(self):
+        self.last_block_time = self.block_time
+        self.block_time = time.time()
+        self.block_times.append(self.block_time - self.last_block_time)
+
+    def get_avg_block_time(self):
+        return sum(self.block_times) / len(self.block_times)
 
 ############################################################################################################
 # Transaction Methods
@@ -213,6 +234,7 @@ class Node(BaseModel):
 ############################################################################################################
 # Bootstrap Methods
 
+
     def get_next_node_id(self):
         self.gen_id += 1
         return self.gen_id
@@ -232,9 +254,11 @@ class Node(BaseModel):
         return gen_block
 
     async def bootstrap(self):
+        self.block_time = time.time()
         self.broadcaster.broadcast_ok()
         self.broadcaster.broadcast_mapping()
         gen_block = self.create_gen_block()
+        self.update_avg_block_time()
         self.blockchain.add_block(gen_block)
         # transaction for each node transferring 1000 coins
         transactions = []
@@ -267,4 +291,5 @@ class Node(BaseModel):
         next_block.add_transaction(first_stake)
         self.blockchain.add_block(next_block)
         self.update_wallets_from_bootstrap(self.blockchain)
+        self.update_avg_block_time()
         self.broadcast_blockchain(self.blockchain)

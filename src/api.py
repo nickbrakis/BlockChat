@@ -21,11 +21,13 @@ async def startup_event():
     print("Node starting up")
     ip = os.getenv("IP_ADDRESS")
     bootstrap_ip = os.getenv("BOOTSTRAP")
-    capacity = os.getenv("CAPACITY")
+    capacity = int(os.getenv("CAPACITY"))
+    num_nodes = int(os.getenv("NUM_NODES"))
     wallet = node.generate_private_wallet()
     node.address = wallet.public_key
     node.capacity = capacity
     node.transaction_pool.capacity = capacity
+    node.num_nodes = num_nodes
     if bootstrap_ip == ip:
         node_id = 0
         node.add_node(node_id, ip, wallet)
@@ -130,10 +132,16 @@ async def get_id(background_tasks: BackgroundTasks, public_key: str, ip: str):
     node.add_node(node_id=node_id, ip=ip, wallet=new_node_wallet)
     print(f"Node with id {node_id} added.")
 
-    if node_id == 4:
+    if node_id == node.num_nodes:
         background_tasks.add_task(node.bootstrap)
 
     return JSONResponse({"node_id": node_id}, status_code=status.HTTP_200_OK)
+
+
+@app.get("/get_avg_block_time")
+async def get_avg_block_time():
+    avg_block_time = node.get_avg_block_time()
+    return JSONResponse(avg_block_time, status_code=status.HTTP_200_OK)
 
 
 @app.get("/ok")

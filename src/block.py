@@ -34,10 +34,7 @@ class Block(BaseModel):
         self.transactions: list[Transaction] = transactions
         self.timestamp: int = timestamp
         self.index: int = index
-        if current_hash is None:
-            self.current_hash: str = self.calculate_hash()
-        else:
-            self.current_hash: str = current_hash
+        self.current_hash: str = current_hash
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -57,14 +54,14 @@ class Block(BaseModel):
         transactions_str = ""
         for transaction in self.transactions:
             transactions_str += transaction.to_string()
-        block_string = "{}{}{}{}".format(self.previous_hash,
-                                         self.timestamp,
-                                         transactions_str,
-                                         self.validator).encode()
+        block_string = "{}{}{}".format(self.previous_hash,
+                                       transactions_str,
+                                       self.validator).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def validate_block(self, last_hash: str, validators: dict[str, Wallet]) -> bool:
         if self.validator != self.find_validator(last_hash, validators):
+            logger.error(" ERR1 Invalid Validator!")
             return False
         pending_balances = [(address, wallet.pending_balance)
                             for address, wallet in validators.items()]
@@ -76,17 +73,18 @@ class Block(BaseModel):
             if not transaction.validate_transaction(sender):
                 logger.error("Invalid Transaction!")
                 self.reset_pending(pending_balances, validators)
+                logger.error(" ERR2 Invalid Transaction!")
                 return False
 
-        # if self.current_hash != self.calculate_hash():
-        #     logger.error("Invalid Hash!")
-        #     logger.error(f"Expected: {self.calculate_hash()}")
-        #     logger.error(f"Actual: {self.current_hash}")
-        #     self.reset_pending(pending_balances, validators)
-        #     return False
+        if self.current_hash != self.calculate_hash():
+            logger.error("Invalid Hash!")
+            logger.error(f"Expected: {self.calculate_hash()}")
+            logger.error(f"Actual: {self.current_hash}")
+            self.reset_pending(pending_balances, validators)
+            return False
 
         if self.previous_hash != last_hash:
-            logger.error("Invalid Previous Hash!")
+            logger.error("ERR 3 Invalid Previous Hash!")
             self.reset_pending(pending_balances, validators)
             return False
         return True
@@ -109,4 +107,6 @@ class Block(BaseModel):
             validator_bag = []
         if validator_bag == []:
             return None
+        # sort the validator bag to ensure same choice amongst nodes
+        validator_bag.sort()
         return random.choice(validator_bag)

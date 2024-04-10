@@ -1,8 +1,11 @@
 # pylint: disable=missing-docstring
 from collections import deque
+import logging
 from transaction import Transaction
 from block import Block
 from pydantic import BaseModel
+
+logger = logging.getLogger('uvicorn')
 
 
 class TransactionPool(BaseModel):
@@ -28,11 +31,8 @@ class TransactionPool(BaseModel):
 
     def update_from_block(self, block: Block):
         for transaction in block.transactions:
-            nonce = transaction.nonce
-            sender_address = transaction.sender_address
-            # to prevent double spending
-            for pending_transaction in self.pending_transactions:
-                if pending_transaction.nonce == nonce and pending_transaction.sender_address == sender_address:
+            for pending_transaction in list(self.pending_transactions):
+                if pending_transaction.transaction_id == transaction.transaction_id:
                     self.pending_transactions.remove(pending_transaction)
                     break
 
