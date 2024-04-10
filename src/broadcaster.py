@@ -35,7 +35,6 @@ class Broadcaster(BaseModel):
             url = f"http://{ip}:8000/receive_transaction"
             transaction_json = jsonable_encoder(transaction)
             msg = requests.post(url, json=transaction_json, timeout=10)
-            logger.info(f"Response from {ip}: {msg}")
 
     def broadcast_blockchain(self, blockchain: Blockchain):
         logger.info("Broadcasting blockchain")

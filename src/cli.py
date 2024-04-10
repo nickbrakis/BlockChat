@@ -26,8 +26,7 @@ def main():
         print("2. View Last Block")
         print("3. Get Balance")
         print("4. Set Stake")
-        print("5. Print Hello")
-        print("6. Exit")
+        print("5. Exit")
         choice = int(input("Enter your choice: "))
         os.system("clear")
         if choice == 1:
@@ -67,9 +66,6 @@ def main():
             request_data = {"amount": amount}
             response = requests.post(
                 f"{url}set_stake", json=request_data)
-            print(response.json())
-        elif choice == 5:
-            response = requests.get(f"{url}hello")
             print(response.json())
         elif choice == 6:
             break

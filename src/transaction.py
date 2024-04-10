@@ -91,7 +91,6 @@ class Transaction(BaseModel):
 
     def validate_transaction(self, wallet: Wallet) -> tuple[str, bool]:
         if not self.verify_signature():
-            logger.error("Invalid Signature")
             return "Invalid Signature", False
         if self.receiver_address == "0":
             if not wallet.stake_check(self.amount):

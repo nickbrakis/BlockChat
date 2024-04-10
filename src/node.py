@@ -67,8 +67,6 @@ class Node(BaseModel):
             # to prevent double spending, catch up to transaction nonce
             if sender.nonce < transaction.nonce:
                 sender.nonce = transaction.nonce
-            print(f"Receiver address is: {transaction.receiver_address}")
-            print(f"Sender address is: {transaction.sender_address}")
             if transaction.receiver_address == "0":
                 sender.stake = transaction.amount
                 continue
@@ -85,6 +83,8 @@ class Node(BaseModel):
                 sender = None
                 if transaction.sender_address != "0":
                     sender = self.nodes[transaction.sender_address]
+                    if sender.nonce < transaction.nonce:
+                        sender.nonce = transaction.nonce
                 if transaction.receiver_address == "0":
                     sender.stake = transaction.amount
                     continue
@@ -100,7 +100,6 @@ class Node(BaseModel):
 
     def set_stake(self, background_tasks: BackgroundTasks, amount: float) -> str:
         msg = self.create_transaction(background_tasks, "0", amount, "")
-        logger.info(msg)
         return f"Stake set to {amount} successfully, wait for next block to be minted."
 
 ############################################################################################################
@@ -133,15 +132,12 @@ class Node(BaseModel):
 
     def mint_block(self):
         if not self.transaction_pool.is_full():
-            logger.info("Transaction pool is not full")
             return
         last_hash = self.blockchain.last_block().current_hash
         validator = Block.find_validator(last_hash, self.nodes)
         if validator is None:
-            logger.info("No validator found")
             return
         if validator != self.address:
-            logger.info("Not the validator")
             return
         pending = self.transaction_pool.get_pending_transactions()
         transactions = []
@@ -149,11 +145,8 @@ class Node(BaseModel):
                            transactions=transactions,
                            validator=self.address,
                            capacity=self.capacity)
-        logger.info("Transaction pool size: %d", len(pending))
         for _ in range(self.capacity):
             next_block.add_transaction(pending.popleft())
-        logger.info("Validator is: %s", next_block.validator)
-        logger.info("Self address is: %s", self.address)
         next_block.validator = self.address
         self.blockchain.add_block(next_block)
         self.update_wallets(next_block)
@@ -172,12 +165,10 @@ class Node(BaseModel):
         wallet = self.nodes[self.address]
         if receiver_address == "0":
             if not wallet.stake_check(amount):
-                logger.info("Failed stake check")
                 return "Failed stake check"
         else:
             fee = amount * 0.03
             if not wallet.pending_balance_check(amount, fee):
-                logger.info("Failed balance check")
                 return "Failed balance check"
 
         nonce = self.nodes[self.address].nonce

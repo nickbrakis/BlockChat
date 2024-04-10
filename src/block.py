@@ -65,10 +65,6 @@ class Block(BaseModel):
 
     def validate_block(self, last_hash: str, validators: dict[str, Wallet]) -> bool:
         if self.validator != self.find_validator(last_hash, validators):
-            logger.error("Wrong Validator!")
-            logger.error(
-                f"Expected: {self.find_validator(last_hash, validators)}")
-            logger.error(f"Actual: {self.validator}")
             return False
         pending_balances = [(address, wallet.pending_balance)
                             for address, wallet in validators.items()]
