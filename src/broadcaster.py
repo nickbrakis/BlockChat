@@ -22,6 +22,8 @@ class Broadcaster(BaseModel):
 
     def broadcast_block(self, block: Block):
         for _, ip in self.mapping.values():
+            if ip == self.my_ip:
+                continue
             url = f"http://{ip}:8000/receive_block"
             block_json = jsonable_encoder(block)
             requests.post(url, json=block_json, timeout=10)
@@ -32,7 +34,8 @@ class Broadcaster(BaseModel):
                 continue
             url = f"http://{ip}:8000/receive_transaction"
             transaction_json = jsonable_encoder(transaction)
-            requests.post(url, json=transaction_json, timeout=10)
+            msg = requests.post(url, json=transaction_json, timeout=10)
+            logger.info(f"Response from {ip}: {msg}")
 
     def broadcast_blockchain(self, blockchain: Blockchain):
         logger.info("Broadcasting blockchain")

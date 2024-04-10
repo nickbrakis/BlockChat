@@ -1,8 +1,11 @@
 # pylint: disable=missing-docstring
 import hashlib
 import ecdsa
+import logging
 from pydantic import BaseModel
 from wallet import Wallet
+
+logger = logging.getLogger('uvicorn')
 
 
 class Transaction(BaseModel):
@@ -88,6 +91,7 @@ class Transaction(BaseModel):
 
     def validate_transaction(self, wallet: Wallet) -> tuple[str, bool]:
         if not self.verify_signature():
+            logger.error("Invalid Signature")
             return "Invalid Signature", False
         if self.receiver_address == "0":
             if not wallet.stake_check(self.amount):
@@ -98,8 +102,11 @@ class Transaction(BaseModel):
         else:
             if not wallet.pending_balance_check(self.amount, self.fee):
                 return "Failed balance check", False
-        if self.nonce <= wallet.nonce:
+        if self.nonce < wallet.nonce:
             return "Invalid nonce", False
         wallet.nonce += 1
         wallet.pending_balance -= self.amount
         return None, True
+
+    def to_string(self) -> str:
+        return f"{self.sender_address}{self.receiver_address}{self.amount}{self.message}{self.nonce}"

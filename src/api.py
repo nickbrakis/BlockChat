@@ -47,11 +47,12 @@ async def startup_event():
 ############### client/api ######################
 
 @app.post("/create_transaction")
-async def create_transaction(request: Request):
+async def create_transaction(background_tasks: BackgroundTasks, request: Request):
     receiver_address = request.query_params.get("receiver_address")
     amount = float(request.query_params.get("amount"))
     message = request.query_params.get("message")
-    msg = node.create_transaction(receiver_address, amount, message)
+    msg = node.create_transaction(
+        background_tasks, receiver_address, amount, message)
     return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
@@ -81,17 +82,19 @@ async def get_mapping():
     return JSONResponse(mapping_json, status_code=status.HTTP_200_OK)
 
 
-@app.post("/set_stake/{amount}")
-async def set_stake(amount: float):
-    msg = node.set_stake(amount)
+@app.post("/set_stake")
+async def set_stake(background_tasks: BackgroundTasks, request: Request):
+    data = await request.json()
+    amount = float(data.get("amount"))
+    msg = node.set_stake(background_tasks, amount)
     return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 
 @app.post("/receive_transaction")
-async def receive_transaction(request: Request):
+async def receive_transaction(background_tasks: BackgroundTasks, request: Request):
     data = await request.json()
     transaction = Transaction.from_dict(data)
-    msg = node.receive_transaction(transaction)
+    msg = node.receive_transaction(background_tasks, transaction)
     return JSONResponse(msg, status_code=status.HTTP_200_OK)
 
 

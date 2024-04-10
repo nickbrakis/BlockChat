@@ -64,7 +64,9 @@ def main():
             print(response.json())
         elif choice == 4:
             amount = float(input("Enter amount: "))
-            response = requests.post(f"{url}set_stake/{amount}")
+            request_data = {"amount": amount}
+            response = requests.post(
+                f"{url}set_stake", json=request_data)
             print(response.json())
         elif choice == 5:
             response = requests.get(f"{url}hello")

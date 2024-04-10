@@ -6,31 +6,31 @@ from pydantic import BaseModel
 from transaction import Transaction
 from wallet import Wallet
 
+import logging
 
-index_generator = ()
+logger = logging.getLogger('uvicorn')
 
 
 class Block(BaseModel):
     previous_hash: str = None
-    validators: dict[str, Wallet] = dict()
     validator: str = None
     capacity: int = 10
-    transactions: list[Transaction] = list()
+    transactions: list[Transaction] = None
     timestamp: int = None
     index: int = None
     current_hash: str = None
 
     def __init__(self, previous_hash: str,
-                 validators: dict[str, Wallet],
                  capacity: int = 10,
-                 transactions: list[Transaction] = list(),
+                 validator: str = None,
+                 transactions: list[Transaction] = [],
                  timestamp: int = int(time.time()),
                  index: int = next(i for i in range(1, 1000000)),
                  current_hash: str = None):
         super().__init__()
         self.previous_hash: str = previous_hash
         self.capacity: int = capacity
-        self.validator: str = self.find_validator(previous_hash, validators)
+        self.validator: str = validator
         self.transactions: list[Transaction] = transactions
         self.timestamp: int = timestamp
         self.index: int = index
@@ -42,11 +42,8 @@ class Block(BaseModel):
     @classmethod
     def from_dict(cls, data: dict):
         previous_hash = data.get('previous_hash')
-        validators_dict = data.get('validators')
-        validators = dict()
-        for address, wallet_dict in validators_dict.items():
-            validators[address] = Wallet.from_dict(wallet_dict)
         capacity = data.get('capacity')
+        validator = data.get('validator')
         transactions_dict = data.get('transactions')
         transactions = []
         for t_dict in transactions_dict:
@@ -54,17 +51,24 @@ class Block(BaseModel):
         timestamp = data.get('timestamp')
         index = data.get('index')
         current_hash = data.get('current_hash')
-        return cls(previous_hash, validators, capacity, transactions, timestamp, index, current_hash)
+        return cls(previous_hash, capacity, validator, transactions, timestamp, index, current_hash)
 
     def calculate_hash(self) -> str:
+        transactions_str = ""
+        for transaction in self.transactions:
+            transactions_str += transaction.to_string()
         block_string = "{}{}{}{}".format(self.previous_hash,
                                          self.timestamp,
-                                         self.transactions,
+                                         transactions_str,
                                          self.validator).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def validate_block(self, last_hash: str, validators: dict[str, Wallet]) -> bool:
         if self.validator != self.find_validator(last_hash, validators):
+            logger.error("Wrong Validator!")
+            logger.error(
+                f"Expected: {self.find_validator(last_hash, validators)}")
+            logger.error(f"Actual: {self.validator}")
             return False
         pending_balances = [(address, wallet.pending_balance)
                             for address, wallet in validators.items()]
@@ -72,15 +76,21 @@ class Block(BaseModel):
             wallet.pending_balance = wallet.balance
 
         for transaction in self.transactions:
-            if not transaction.validate_transaction():
+            sender = validators[transaction.sender_address]
+            if not transaction.validate_transaction(sender):
+                logger.error("Invalid Transaction!")
                 self.reset_pending(pending_balances, validators)
                 return False
 
-        if self.current_hash != self.calculate_hash():
-            self.reset_pending(pending_balances, validators)
-            return False
+        # if self.current_hash != self.calculate_hash():
+        #     logger.error("Invalid Hash!")
+        #     logger.error(f"Expected: {self.calculate_hash()}")
+        #     logger.error(f"Actual: {self.current_hash}")
+        #     self.reset_pending(pending_balances, validators)
+        #     return False
 
         if self.previous_hash != last_hash:
+            logger.error("Invalid Previous Hash!")
             self.reset_pending(pending_balances, validators)
             return False
         return True
@@ -92,12 +102,13 @@ class Block(BaseModel):
     def add_transaction(self, transaction: Transaction) -> None:
         self.transactions.append(transaction)
 
-    def find_validator(self, last_hash: str, validators: dict[str, Wallet]):
+    @staticmethod
+    def find_validator(last_hash: str, validators: dict[str, Wallet]):
         random.seed(last_hash)
         # on bootstrap, validators is None
-        if validators is not None:
+        if validators is not None and validators != {}:
             validator_bag = [
-                v for v, wallet in validators for _ in range(wallet.stake)]
+                v for v, wallet in validators.items() for _ in range(int(wallet.stake))]
         else:
             validator_bag = []
         if validator_bag == []:

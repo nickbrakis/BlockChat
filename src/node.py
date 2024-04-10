@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 import logging
 import ecdsa
+from fastapi import BackgroundTasks
 from wallet import Wallet
 from block import Block
 from transaction import Transaction
@@ -17,6 +18,7 @@ class Node(BaseModel):
     # nodes = {public_key : wallet}
     nodes: dict[str, Wallet] = dict()
     transaction_pool: TransactionPool = TransactionPool()
+    capacity: int = 5
     blockchain: Blockchain = Blockchain()
     id: int = None
     broadcaster: Broadcaster = Broadcaster()
@@ -41,7 +43,6 @@ class Node(BaseModel):
         self.nodes[public_key] = wallet
 
     def receive_mapping(self, mapping: dict[int, tuple[str, str]]):
-        print(mapping)
         for node_id, (public_key, ip) in mapping.items():
             if public_key == self.address:
                 continue
@@ -66,6 +67,8 @@ class Node(BaseModel):
             # to prevent double spending, catch up to transaction nonce
             if sender.nonce < transaction.nonce:
                 sender.nonce = transaction.nonce
+            print(f"Receiver address is: {transaction.receiver_address}")
+            print(f"Sender address is: {transaction.sender_address}")
             if transaction.receiver_address == "0":
                 sender.stake = transaction.amount
                 continue
@@ -77,7 +80,6 @@ class Node(BaseModel):
             wallet.pending_balance = wallet.balance
 
     def update_wallets_from_bootstrap(self, blockchain: Blockchain):
-        print("malakas")
         for block in blockchain.blocks:
             for transaction in block.transactions:
                 sender = None
@@ -96,9 +98,10 @@ class Node(BaseModel):
     def get_balance(self) -> int:
         return self.nodes[self.address].balance
 
-    def set_stake(self, amount: float) -> str:
-        self.nodes[self.address].stake = amount
-        return f"Stake set to {amount} successfully."
+    def set_stake(self, background_tasks: BackgroundTasks, amount: float) -> str:
+        msg = self.create_transaction(background_tasks, "0", amount, "")
+        logger.info(msg)
+        return f"Stake set to {amount} successfully, wait for next block to be minted."
 
 ############################################################################################################
 # Block & Blockchain Methods
@@ -112,13 +115,13 @@ class Node(BaseModel):
         if not ok:
             return "Block is invalid."
         self.update_wallets(block)
+        self.transaction_pool.update_from_block(block)
         self.blockchain.add_block(block)
         return f"Block {block.current_hash} added to blockchain."
 
     def receive_bootstrap_blockchain(self, blockchain: Blockchain):
         if len(self.blockchain.blocks) > 0:
             return "Blockchain already exists."
-        logger.info("Receiving blockchain: %s", blockchain)
         self.blockchain = blockchain
         self.update_wallets_from_bootstrap(blockchain)
 
@@ -128,25 +131,53 @@ class Node(BaseModel):
     def broadcast_blockchain(self, blockchain: Blockchain):
         self.broadcaster.broadcast_blockchain(blockchain)
 
+    def mint_block(self):
+        if not self.transaction_pool.is_full():
+            logger.info("Transaction pool is not full")
+            return
+        last_hash = self.blockchain.last_block().current_hash
+        validator = Block.find_validator(last_hash, self.nodes)
+        if validator is None:
+            logger.info("No validator found")
+            return
+        if validator != self.address:
+            logger.info("Not the validator")
+            return
+        pending = self.transaction_pool.get_pending_transactions()
+        transactions = []
+        next_block = Block(previous_hash=last_hash,
+                           transactions=transactions,
+                           validator=self.address,
+                           capacity=self.capacity)
+        logger.info("Transaction pool size: %d", len(pending))
+        for _ in range(self.capacity):
+            next_block.add_transaction(pending.popleft())
+        logger.info("Validator is: %s", next_block.validator)
+        logger.info("Self address is: %s", self.address)
+        next_block.validator = self.address
+        self.blockchain.add_block(next_block)
+        self.update_wallets(next_block)
+        self.broadcast_block(next_block)
+
 ############################################################################################################
 # Transaction Methods
 
     def broadcast_transaction(self, transaction: Transaction):
         self.broadcaster.broadcast_transaction(transaction)
 
-    def create_transaction(self, receiver_address: str, amount: float, message: str):
-        if receiver_address not in self.nodes:
+    def create_transaction(self, background_tasks: BackgroundTasks, receiver_address: str, amount: float, message: str):
+        if receiver_address not in self.nodes and receiver_address != "0":
             return "Invalid receiver address"
 
         wallet = self.nodes[self.address]
         if receiver_address == "0":
             if not wallet.stake_check(amount):
+                logger.info("Failed stake check")
                 return "Failed stake check"
-            else:
-                return None, True
         else:
             fee = amount * 0.03
             if not wallet.pending_balance_check(amount, fee):
+                logger.info("Failed balance check")
                 return "Failed balance check"
 
         nonce = self.nodes[self.address].nonce
@@ -162,16 +193,17 @@ class Node(BaseModel):
         p_key = self.nodes[self.address].get_private_key()
         transaction.sign_transaction(p_key)
 
-        self.receive_transaction(transaction)
+        msg = self.receive_transaction(background_tasks, transaction)
         self.broadcast_transaction(transaction)
-        return "Transaction Created."
+        return msg
 
-    def receive_transaction(self, transaction: Transaction):
+    def receive_transaction(self, background_tasks: BackgroundTasks, transaction: Transaction):
+        logger.info(f"Received transaction{transaction}")
         receiver_address = transaction.receiver_address
         sender_address = transaction.sender_address
         sender_wallet = self.nodes[sender_address]
-        if receiver_address not in self.nodes:
-            return "Invalid receiver address"
+        # if receiver_address not in self.nodes and receiver_address != "0":
+        #     return "Invalid receiver address"
         if sender_address not in self.nodes:
             return "Invalid sender address"
 
@@ -183,18 +215,23 @@ class Node(BaseModel):
         if not ok:
             return msg
 
+        background_tasks.add_task(self.mint_block)
+
         return msg
 
 
 ############################################################################################################
 # Bootstrap Methods
 
+
     def get_next_node_id(self):
         self.gen_id += 1
         return self.gen_id
 
     def create_gen_block(self):
-        gen_block = Block(previous_hash=1, validators=None, capacity=1)
+        transactions = []
+        gen_block = Block(
+            previous_hash=1, transactions=transactions, capacity=1)
         gen_transaction = Transaction(sender_address="0",
                                       receiver_address=self.address,
                                       type_of_transaction="coins",
@@ -210,12 +247,9 @@ class Node(BaseModel):
         self.broadcaster.broadcast_mapping()
         gen_block = self.create_gen_block()
         self.blockchain.add_block(gen_block)
-        logger.info("genesis block = %s", gen_block)
-
         # transaction for each node transferring 1000 coins
         transactions = []
         next_block = Block(previous_hash=self.blockchain.last_block().current_hash,
-                           validators=None,
                            transactions=transactions,
                            capacity=5)
         for node in self.nodes:
@@ -244,5 +278,4 @@ class Node(BaseModel):
         next_block.add_transaction(first_stake)
         self.blockchain.add_block(next_block)
         self.update_wallets_from_bootstrap(self.blockchain)
-        logger.info("genesis block = %s", gen_block)
         self.broadcast_blockchain(self.blockchain)
