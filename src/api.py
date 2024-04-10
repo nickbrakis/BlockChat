@@ -21,8 +21,11 @@ async def startup_event():
     print("Node starting up")
     ip = os.getenv("IP_ADDRESS")
     bootstrap_ip = os.getenv("BOOTSTRAP")
+    capacity = os.getenv("CAPACITY")
     wallet = node.generate_private_wallet()
     node.address = wallet.public_key
+    node.capacity = capacity
+    node.transaction_pool.capacity = capacity
     if bootstrap_ip == ip:
         node_id = 0
         node.add_node(node_id, ip, wallet)

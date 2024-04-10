@@ -67,7 +67,7 @@ def main():
             response = requests.post(
                 f"{url}set_stake", json=request_data)
             print(response.json())
-        elif choice == 6:
+        elif choice == 5:
             break
         else:
             print("Invalid choice")

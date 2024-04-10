@@ -213,7 +213,6 @@ class Node(BaseModel):
 ############################################################################################################
 # Bootstrap Methods
 
-
     def get_next_node_id(self):
         self.gen_id += 1
         return self.gen_id
