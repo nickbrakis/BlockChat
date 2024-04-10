@@ -198,12 +198,11 @@ class Node(BaseModel):
         return msg
 
     def receive_transaction(self, background_tasks: BackgroundTasks, transaction: Transaction):
-        logger.info(f"Received transaction{transaction}")
         receiver_address = transaction.receiver_address
         sender_address = transaction.sender_address
         sender_wallet = self.nodes[sender_address]
-        # if receiver_address not in self.nodes and receiver_address != "0":
-        #     return "Invalid receiver address"
+        if receiver_address not in self.nodes and receiver_address != "0":
+            return "Invalid receiver address"
         if sender_address not in self.nodes:
             return "Invalid sender address"
 
