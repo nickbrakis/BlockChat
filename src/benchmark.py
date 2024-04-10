@@ -13,8 +13,8 @@ def get_mapping():
 
 def create_transactions(nodes):
     transactions = []
-    for i in range(nodes):
-        with open(f'input_{nodes}/trans{i}.txt', 'r') as file:
+    for i in range(nodes+1):
+        with open(f"input_{nodes+1}/trans{i}.txt", 'r') as file:
             url = f"http://localhost:800{i}/create_transaction"
             for line in file:
                 # Split the line into receiver_address and message
@@ -96,14 +96,14 @@ if __name__ == "__main__":
         time.sleep(5)
         mapping = get_mapping()
         set_stakes(num_nodes, 10)
-        set_superstake(1)
-        transactions = create_transactions(5)
+        set_superstake(i)
+        transactions = create_transactions(num_nodes)
         trans_cnt = float(len(transactions))
         total_time = execute_transactions(transactions)
         output_string += "===========================================================================\n"
         output_string += f"Justice Benchmark: one node with stake 100.\n"
         for y in range(num_nodes+1):
-            if y == 1:
+            if y == i:
                 output_string += f"Super Stake "
             output_string += f"Node {y} balance: {get_node_balance(y)}\n"
 
