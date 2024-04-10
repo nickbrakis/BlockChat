@@ -146,10 +146,6 @@ class Node(BaseModel):
         if validator is None:
             return
         if validator != self.address:
-            logger.error("ERRMINT Not the validator.")
-            logger.error(f"ERRMINT Validator: {validator}")
-            logger.error(f"ERRMINT Me: {self.address}")
-            logger.error(f"ERRMINT Last Hash: {last_hash}")
             return
         pending = self.transaction_pool.get_pending_transactions()
         transactions = []
